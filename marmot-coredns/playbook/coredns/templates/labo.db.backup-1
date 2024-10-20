@@ -1,0 +1,47 @@
+labo.local.	3600 IN SOA ns1.labo.local. root.labo.local. (
+				1          ; serial
+				7200       ; refresh (4 hours)
+				3600       ; retry (1 hour)
+				604800     ; expire (1 week)
+				1800       ; minimum (30 min)
+				)
+
+; Hypervisors
+hmc             3600 IN  A     192.168.1.9  ; Hypervisor management console
+hv1             3600 IN  A     10.1.0.11
+hv2             3600 IN  A     10.1.0.12
+hv3             3600 IN  A     10.1.0.13
+hv4             3600 IN  A     10.1.0.14
+
+; Infra Servers
+ns1             3600 IN  A     192.168.1.8    ; This server CoreDNS
+ca              3600 IN  CNAME ns1           ; Local CA
+ldap            3600 IN  CNAME ns1
+sso             3600 IN  CNAME ns1
+oauth           3600 IN  CNAME ns1
+
+;; Mail Servers
+mail            3600 IN  A     192.168.1.220 ; Mail server
+labo.local.          IN  MX    10 mail.labo.local.
+
+;; CICD Servers
+harbor          3600 IN  A     192.168.1.221 ; Container Image Registry
+gitlab          3600 IN  A     192.168.1.222 ; Code Repository
+jenkins         3600 IN  A     192.168.1.223 ; CICD Server
+ceph            3600 IN  A     192.168.1.227 ; Ceph mon1..3
+                3600 IN  A     192.168.1.228 
+                3600 IN  A     192.168.1.229
+objectstorage   3600 IN  CNAME ceph          ; Ceph Object Storage RADOSGW
+
+; Edge Nodes
+;raspi07         3600 IN  A     192.168.1.241 ; Edge Node 1
+;raspi08         3600 IN  A     192.168.1.242 ; Edge Node 2
+
+; Istio Ingress Gateway
+;igw1            3600 IN  A     10.0.2.81
+;igw2            3600 IN  A     10.0.2.82
+;svc1            3600 IN  CNAME igw1          ; Istio apl #1
+;svc2            3600 IN  CNAME igw2          ; Istio apl #2
+;svc3            3600 IN  CNAME igw2          ; Istio apl #2
+;svc4            3600 IN  CNAME igw2          ; for Multilayer App
+

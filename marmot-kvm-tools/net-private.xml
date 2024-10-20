@@ -1,0 +1,8 @@
+<network>
+  <name>private</name>
+  <forward mode="bridge">
+    <interface dev="enp3s0f1"/>
+  </forward>
+</network>
+
+

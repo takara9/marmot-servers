@@ -1,0 +1,12 @@
+hmc         ansible_connection=local
+hv1         ansible_ssh_host=hv1 ansible_ssh_private_key_file=/home/tkr/.ssh/id_rsa
+hv2         ansible_ssh_host=hv2 ansible_ssh_private_key_file=/home/tkr/.ssh/id_rsa
+hv3         ansible_ssh_host=hv3 ansible_ssh_private_key_file=/home/tkr/.ssh/id_rsa
+hv4         ansible_ssh_host=hv4 ansible_ssh_private_key_file=/home/tkr/.ssh/id_rsa
+
+[hvs]
+hv[1:4]
+
+
+[all:vars]
+admin_user=tkr

@@ -1,0 +1,24 @@
+#
+# 最小構成のGitLab
+#
+domain: labo.local
+cluster_name: infra
+os_variant:  ubuntu20.04
+
+### Virtual Machine Spec
+vm_spec:
+  - name: "gitlab"
+    cpu: 2
+    memory: 8096
+    private_ip:  "172.16.0.222"
+    public_ip:   "192.168.1.222"
+    storage:
+    - name: /opt/gitlab
+      size: 100
+      vg:   vg3
+    - name: /var/opt/gitlab
+      size: 100
+      vg:   vg3
+    vm_host: auto
+    playbook: install.yaml
+    comment: "GitLab Server"

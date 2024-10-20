@@ -1,0 +1,7 @@
+- name: basic information
+  hosts: all
+  gather_facts: true
+  become: true
+  #
+  tasks:
+  - debug: msg="{{ ansible_facts.enp6s0.ipv4.address }}"

@@ -1,0 +1,11 @@
+dn: uid=suzuki,ou=people,dc=labo,dc=local
+changetype: add
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+uid: suzuki
+cn: Souta Suzuki
+sn: souta
+o: people
+userPassword: {SSHA}TklMLKoc248sCdW3Af31ESfQ0l+uyOvd

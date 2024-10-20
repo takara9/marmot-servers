@@ -1,0 +1,52 @@
+- name: copy rbac yamls to bootnode
+  template:
+    src: rbac-kubelet.yaml
+    dest: "{{ cadmin_home }}/rbac-kubelet.yaml"
+    owner: "{{ cluster_admin }}"
+    group: "{{ cluster_admin }}"
+    mode: '0644'
+  when: kubernetes_version is version('1.22.0', '<')
+
+- template:
+    src: rbac-kubelet-rolebinding.yaml
+    dest: "{{ cadmin_home }}/rbac-kubelet-rolebinding.yaml"
+    owner: "{{ cluster_admin }}"
+    group: "{{ cluster_admin }}"
+    mode: '0644'
+  when: kubernetes_version is version('1.22.0', '<')
+
+- name: copy rbac yamls to bootnode
+  template:
+    src: rbac-kubelet-23.yaml
+    dest: "{{ cadmin_home }}/rbac-kubelet.yaml"
+    owner: "{{ cluster_admin }}"
+    group: "{{ cluster_admin }}"
+    mode: '0644'
+  when: kubernetes_version is version('1.22.0', '>=')
+
+
+- template:
+    src: rbac-kubelet-rolebinding-23.yaml
+    dest: "{{ cadmin_home }}/rbac-kubelet-rolebinding.yaml"
+    owner: "{{ cluster_admin }}"
+    group: "{{ cluster_admin }}"
+    mode: '0644'
+  when: kubernetes_version is version('1.22.0', '>=')
+
+
+
+- name: apply rbac manifests
+  become: yes
+  shell: |
+    kubectl apply --kubeconfig {{ r_ca_kubeconfig }}/admin.kubeconfig -f rbac-kubelet.yaml
+  args:
+    chdir: "{{ cadmin_home }}"
+
+- name: apply role manifests
+  become: yes
+  shell: |
+    kubectl apply --kubeconfig {{ r_ca_kubeconfig }}/admin.kubeconfig -f rbac-kubelet-rolebinding.yaml
+  args:
+    chdir: "{{ cadmin_home }}"  
+
+

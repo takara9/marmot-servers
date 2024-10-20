@@ -1,0 +1,23 @@
+version: '3.6'
+services:
+  web:
+    image: 'gitlab/gitlab-ce:latest'
+    restart: always
+    hostname: 'gitlab.labo.local'    
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'https://gitlab.labo.local'
+        nginx['ssl_certificate'] = "/etc/gitlab/ssl/gitlab.labo.local.cert"
+        nginx['ssl_certificate_key'] = "/etc/gitlab/ssl/gitlab.labo.local.key"
+        gitlab_rails['time_zone'] = 'Asia/Tokyo'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2224
+    ports:
+      - '80:80'
+      - '443:443'
+      - '2224:22'
+    volumes:
+      - '/gitlab/config:/etc/gitlab'
+      - '/gitlab/logs:/var/log/gitlab'
+      - '/gitlab/data:/var/opt/gitlab'
+    shm_size: '256m'
+  

@@ -1,0 +1,14 @@
+#
+# Docker CE のインストール
+#
+
+- include_tasks: dl_cni_plugin.yaml
+  when: ansible_facts.hostname is match(download_node)
+  
+- include_tasks: dl_crictl.yaml
+  when: ansible_facts.hostname is match(download_node)
+
+- include_tasks: install_docker.yaml
+  when: ansible_facts.hostname is not match(download_node)
+
+

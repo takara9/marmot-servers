@@ -1,0 +1,12 @@
+#
+#  コントローラー抜きでポッドを起動
+#
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+  - name: nginx
+    image: harbor.labo.local/tkr/nginx:latest
+    imagePullPolicy: Always

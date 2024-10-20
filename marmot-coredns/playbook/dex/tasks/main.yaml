@@ -1,0 +1,75 @@
+#- name: Run the equivalent of "apt-get update" as a separate step
+#  apt:
+#    update_cache: yes
+#
+#- name: Install a list of packages
+#  apt:
+#    name: "{{ packages }}"
+#    state: present
+#  vars:
+#    packages:
+#    - php7.4-mbstring
+#    - php7.4-gd
+#    - php7.4-gmp
+#    - php7.4-zip
+#    - language-pack-en-base
+#    - language-pack-en    
+
+#
+# LAMのソースコード取得
+#
+- name: Download DEX
+  get_url:
+    url: https://github.com/dexidp/dex/archive/refs/tags/v2.32.0.tar.gz
+    dest: /tmp/dex-v2.32.0.tar.gz
+    mode: 0440
+
+#
+# DEXコードを展開
+#
+- name: Unarcvhice Dex
+  unarchive:
+    src:  /tmp/dex-v2.32.0.tar.gz
+    dest: "{{ fs_dex }}"
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+#
+# データ用ディレクトリ作成
+#
+#- name: create slapd.d
+#  file:
+#    state: directory
+#    path: /ldap/etc/slapd.d
+#    owner: root
+#    group: root
+#    mode: '0755'
+
+#
+# LAM をビルド
+#
+#- name: configure 
+#  shell: |
+#      ./configure --with-httpd-user=www-data --with-httpd-group=www-data --with-web-root=/usr/l#ocal/lam
+#      make install
+#  args:
+#      chdir: "{{ my_ldap_data }}/{{ lam }}"
+
+#
+#  Nginx conf for LAM
+#
+#- name: copy nginx/conf.d
+#  template:
+#    src: ldap.conf
+#    dest: /etc/nginx/conf.d/ldap.conf
+#    owner: root
+#    group: root
+#    mode: '0644'
+
+#- name: Restart nginx
+#  systemd:
+#    name: nginx
+#    state: restarted
+#    daemon_reload: yes
+

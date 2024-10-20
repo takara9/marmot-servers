@@ -1,0 +1,33 @@
+global_defs {
+    enable_script_security
+    script_user root
+}
+#vrrp_script chk_haproxy {
+#    script "/usr/bin/pkill -0 haproxy"
+#    interval 2
+#    weight 2
+#}
+vrrp_instance VI_1 {
+    interface {{ iface_pub }}
+    state MASTER
+    priority 101
+    virtual_router_id 42
+    unicast_src_ip {{ ka_primary_frontend_ip }}
+    unicast_peer {
+        {{ ka_backup_frontend_ip }}
+    }
+    authentication {
+        auth_type PASS
+        auth_pass AaP51Mdi
+    }
+    #track_script {
+    #    chk_haproxy
+    #}
+    virtual_ipaddress {                  
+       {{ front_proxy_vip }} dev {{ iface_pub }}
+    }      
+    notify_master /etc/keepalived/master.sh
+    notify_backup /etc/keepalived/backup.sh
+}
+
+

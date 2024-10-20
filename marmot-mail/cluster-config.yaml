@@ -1,0 +1,29 @@
+#
+# 最小構成のメールサーバー
+#
+
+## ドメイン名
+domain: labo.local
+
+## クラスタ名
+cluster_name: infra
+
+## OS
+os_variant:  ubuntu20.04
+
+### Master, Worker, Internal/Frontend Loadbalancer and bootnode
+vm_spec:
+  - name: "mail"
+    cpu: 1
+    memory: 2048
+    private_ip: "172.16.0.220"
+    public_ip:  "192.168.1.220"
+    storage:
+    - name: vdb
+      size: 40
+      vg:   vg3
+    playbook: install.yaml
+    comment: "Test node #1"
+
+
+

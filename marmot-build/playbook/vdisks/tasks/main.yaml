@@ -1,0 +1,49 @@
+- name: Git Repositorys Create a ext4 filesystem on /dev/sdb and check disk blocks
+  filesystem:
+    fstype: ext4
+    dev: /dev/vdb
+
+
+- name: Mount up device by vdb
+  mount:
+    path: "/build"
+    src:  "/dev/vdb"
+    fstype: ext4
+    state: mounted
+
+- name: Create mount point
+  file:
+    path: /build
+    owner: ubuntu
+    group: ubuntu
+    mode: '2775'
+    state: directory
+
+
+- name: Create build dir
+  file:
+    path: /build/src
+    owner: ubuntu
+    group: ubuntu
+    mode: '2775'
+    state: directory
+
+- name: create docker overlay2
+  filesystem:
+    fstype: ext4
+    dev: /dev/vdc
+
+- name: Create mount point
+  file:
+    path: /var/lib/docker
+    owner: root
+    group: root
+    mode: '0710'
+    state: directory
+
+- name: Mount up device by vdc
+  mount:
+    path: "/var/lib/docker"
+    src:  "/dev/vdc"
+    fstype: ext4
+    state: mounted

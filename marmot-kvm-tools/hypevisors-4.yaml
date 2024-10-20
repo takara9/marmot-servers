@@ -1,0 +1,7 @@
+hypervisor_specs:
+  - nodename: "hv2"  
+    cpu: 16
+    memory:  65536
+    ip-addr: 10.1.0.12/8
+    
+    

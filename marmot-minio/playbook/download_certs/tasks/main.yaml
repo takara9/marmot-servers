@@ -1,0 +1,45 @@
+#
+# プライベートCA証明書の取得
+#
+- name: Download CA pem
+  get_url:
+    url: "https://{{ ca_ip }}/ca.pem"
+    dest: /etc/ssl/certs/labo_local_ca.pem
+    validate_certs: no
+    mode: 0440
+
+- name: Download CA pem for Ubuntu 20.04 ca-certs
+  get_url:
+    url: "https://{{ ca_ip }}/ca.pem"
+    dest: /usr/share/ca-certificates/labo_local_ca.crt
+    validate_certs: no
+    mode: 0440
+
+- name: Execute update-ca-certificates
+  shell: |
+    echo "labo_local_ca.crt" >> /etc/ca-certificates.conf
+    update-ca-certificates
+
+
+#
+# ウェブサイト用の証明書の取得
+#
+- name: mkdir dest dir
+  file:
+    path: "{{ web_cert }}"
+    state: directory
+
+- name: Download Web-Site SSL Certs
+  get_url:
+    url:  "https://{{ ca_ip }}/{{ fqdn }}/{{ fqdn }}.crt"
+    dest: "{{ web_cert }}/{{ fqdn }}.crt"
+    validate_certs: no
+    mode: 0440
+- get_url:
+    url:  "https://{{ ca_ip }}/{{ fqdn }}/{{ fqdn }}.key"
+    dest: "{{ web_cert }}/{{ fqdn }}.key"
+    validate_certs: no
+    mode: 0440
+
+
+

@@ -1,0 +1,38 @@
+#!/usr/bin/ruby
+# coding: utf-8
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+#
+# ハイパーバイザーのサーバーをシャットダウンする。
+#
+
+require 'etcdv3'
+require "json"
+require 'yaml'
+require 'etc'
+
+
+$conn = nil
+$conf = nil
+require_relative 'libruby/lib_scheduler.rb'
+
+#
+# メイン
+#
+if __FILE__ == $0
+  begin
+    etcd_connect()
+    hv_list = $conn.get('hvr1', range_end: 'hvr99')
+    for hv in hv_list.kvs
+      hv = JSON.parse!(hv.value)
+      cmd = sprintf("ssh -i %s/.ssh/id_rsa -o 'StrictHostKeyChecking no' %s@%s 'sudo init 0'",Dir.home,Etc.getlogin,hv['nodename'])
+      puts cmd
+      %x( #{cmd} )
+    end
+  rescue SystemStackError
+    printf("\n*** ETCDとの通信エラー ***\n")
+  end
+
+  
+end # END OF MAIN   

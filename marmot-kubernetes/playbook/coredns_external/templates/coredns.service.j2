@@ -1,0 +1,14 @@
+[Unit]
+Description=CoreDNS server
+Documentation=https://coredns.io/
+
+[Service]
+ExecStart=/usr/local/bin/coredns \
+   -dns.port 53:53/udp \
+   -conf /coredns/Corefile
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

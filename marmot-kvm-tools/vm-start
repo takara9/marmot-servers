@@ -1,0 +1,151 @@
+#!/usr/bin/ruby
+# coding: utf-8
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+require 'mb_string'
+require 'yaml'
+require 'json'
+require_relative 'libruby/read_yaml.rb'
+require_relative 'libruby/util_defs.rb'
+require_relative 'libruby/lib_scheduler.rb'
+
+$config_yaml = "Qemukvm.yaml"  # コンフィグファイル名
+$target_host = nil             # 対象ホスト名
+$reuse_bootnode = nil
+
+##
+## 仮想マシンの停止
+##
+def start_vm(node)
+  
+  #msg = sprintf("%s-%s", node['name'],$conf['cluster_name'])
+  #step_start2(msg)
+
+  vm_name = ""
+  if defined? $conf['cluster_name'] and $conf['cluster_name'].to_s.length > 0
+    vm_name = sprintf("%s-%s", node['name'],$conf['cluster_name'])
+  else
+    vm_name = sprintf("%s", node['name'])
+  end
+  node['vm_name'] = vm_name
+
+  start_tm(sprintf("%s : ", vm_name))
+  
+  vm_host = ""
+  ret,ret_host = hvm_vm_host(vm_name)
+  if ret.nil?
+    printf("VMが存在しない\n")
+    finish_tm(1)
+    return
+  else
+    printf("起動中... \n", vm_name)
+    if ret == true
+      vm_host = ret_host
+    end
+  end
+
+  
+  hvm = ""
+  # libvirtd接続先作成
+  if vm_host != `hostname`.strip
+    hvm = sprintf("--connect=qemu+tls://%s/system", vm_host)
+  end
+
+  retry_cnt = 10
+  loop do
+    cmd = sprintf("virsh %s domstate %s", hvm, vm_name)
+    value = %x( #{cmd} )
+    if value.start_with?("running")
+      #finish_tm(0)
+      #printf("成功\n")
+      #
+      # 仮想化ホストの自動起動をOFFに設定
+      cmd = sprintf("virsh %s autostart %s", hvm, vm_name)
+      %x( #{cmd} )
+      finish_tm(0)      
+      break
+    else
+      cmd = sprintf("virsh %s start %s", hvm, vm_name)      
+      %x( #{cmd} )
+    end
+    retry_cnt = retry_cnt - 1
+    if retry_cnt < 1
+      #printf("失敗\n")
+      finish_tm(1)
+      break
+    end
+    sleep 10
+  end # retry loop
+end
+
+##
+## メイン処理
+##
+if __FILE__ == $0
+
+  #printf("*\n")
+  #printf("**********************************\n")
+  #printf("*\n")
+  #printf("*   仮想マシン群の起動を開始\n")
+  #printf("*\n")
+  #printf("**********************************\n")  
+  
+  ## コマンド引数の取得
+  arg_state = nil
+  ARGV.each_with_index do |arg, i|
+    if arg_state == nil
+      arg_state = arg
+      if arg_state == "-r"
+        $reuse_bootnode = true
+      end
+    else
+      if arg_state == "-f"
+        $config_yaml = arg
+      end
+      if arg_state == "-n"
+        $target_host = arg
+      end
+      arg_state = nil
+    end
+  end
+
+  ##
+  ##　Hyperviser管理
+  ##
+  #hvm = hvm_connect()
+  
+  ## Vagarntの仮想サーバースペックを作成
+  ## 及び、メモリ編集に取り込み
+  #printf("\n\n*** 仮想サーバーの開始 ***\n\n")
+  #printf("ファイル名: %s\n",$config_yaml)
+  #step_start("コンフィグファイルの読み取り")
+  vm_config = read_yaml_config($config_yaml)
+  #step_end( vm_config.length > 0 ? 0 : 1 )
+
+  $vm_config_array.each do |val|
+    node = eval(val)
+    if $target_host.nil?
+      if $reuse_bootnode == true
+        if node['name'].start_with?("bootnode")
+          puts "スキップ ", node['name']
+        else
+          start_vm(node)
+        end
+      else
+        start_vm(node)
+      end
+    else
+      if $target_host == node['name']
+        start_vm(node)
+      end
+    end
+  end # END OF NODE
+
+  #printf("**********************************\n")
+  #printf("*\n")
+  #printf("*   仮想マシン群の起動を終了\n")  
+  #printf("*\n")
+  #printf("**********************************\n")
+  
+end

@@ -1,0 +1,12 @@
+dn: dc=labo,dc=local
+objectclass: dcObject
+objectclass: organization
+o: Cloud Native Softfware Laboratory
+dc: labo
+
+dn: cn=Manager,dc=labo,dc=local
+objectclass: organizationalRole
+cn: Manager
+
+
+

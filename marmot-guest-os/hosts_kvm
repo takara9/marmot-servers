@@ -1,0 +1,4 @@
+ubuntu     ansible_connection=local
+
+[all:vars]
+

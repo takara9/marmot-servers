@@ -1,0 +1,49 @@
+# Master と Workerで共通のタスク
+#- debug: msg="{{ ansible_facts }}"
+
+##  Docker のインストール
+- name: Add  GPG key
+  apt_key: url=https://nginx.org/keys/nginx_signing.key
+
+- name: Add Docker APT repository
+  apt_repository:
+    repo: deb [arch=amd64] http://nginx.org/packages/ubuntu/ bionic nginx
+
+
+
+- name: Install a list of packages
+  apt:
+    name: "{{ packages }}"
+    state: present
+  register: apt_res
+  retries: 10
+  delay: 60
+  until: apt_res is success
+  vars:
+    packages:
+    - nginx
+
+
+
+- name: MinIO web page config
+  template:
+    src: minio-api.conf
+    dest: /etc/nginx/conf.d/minio-api.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+
+- name: remove /etc/nginx/conf.d/default.conf
+  file:
+    state: absent
+    path:  /etc/nginx/conf.d/default.conf
+
+
+- name: Re-Start Nginx
+  systemd:
+    name: nginx
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
+    

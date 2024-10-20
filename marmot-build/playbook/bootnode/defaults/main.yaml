@@ -1,0 +1,3 @@
+work_dir :             "/nfs/k8s"
+download_dir :         "{{ work_dir }}/download"
+docker_version_local : "{{ docker_version }}"

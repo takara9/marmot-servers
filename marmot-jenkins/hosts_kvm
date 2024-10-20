@@ -1,0 +1,32 @@
+###
+### ノードのリストとアクセス方法
+###
+
+#control  ansible_connection=local
+control  ansible_ssh_host=172.16.0.223  ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_user=root
+
+# for KVM
+build1   ansible_ssh_host=172.16.0.224  ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_user=root
+#build2   ansible_ssh_host=172.16.0.225  ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_user=root
+
+[builds]
+build[1:1]
+
+
+###
+### プレイブックに与える変数
+###
+[all:vars]
+
+home_path     = /var/lib/jenkins/.ssh
+
+# for KVM
+dir_ssh       = /root/.ssh
+cluster_admin = ubuntu
+
+ca_ip         = 192.168.1.8
+public_ip_dns = 192.168.1.8
+
+
+
+

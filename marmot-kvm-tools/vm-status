@@ -1,0 +1,107 @@
+#!/usr/bin/ruby
+# coding: utf-8
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+require 'mb_string'
+require 'yaml'
+require 'json'
+require_relative 'libruby/read_yaml.rb'
+require_relative 'libruby/util_defs.rb'
+require_relative 'libruby/lib_scheduler.rb'
+
+$config_yaml = "Qemukvm.yaml"  # コンフィグファイル名
+$target_host = nil             # 対象ホスト名
+$reuse_bootnode = nil
+
+##
+## 仮想マシンの状態
+##
+def status_vm(node)
+  
+  vm_name = ""
+  if defined? $conf['cluster_name'] and $conf['cluster_name'].to_s.length > 0
+    vm_name = sprintf("%s-%s", node['name'],$conf['cluster_name'])
+  else
+    vm_name = sprintf("%s", node['name'])
+  end
+  node['vm_name'] = vm_name
+
+  #printf("%20s : ", vm_name)
+  start_tm(sprintf("%s : ", vm_name))
+  
+  vm_host = ""
+  ret,ret_host = hvm_vm_host(vm_name)
+  if ret.nil?
+    printf("VMが存在しない\n")
+    finish_tm(1)    
+    return
+  else
+    if ret == true
+      vm_host = ret_host
+    end
+  end
+
+  hvm = ""
+
+  # libvirtd接続先作成
+  if vm_host != `hostname`.strip
+    hvm = sprintf("--connect=qemu+tls://%s/system", vm_host)
+  end
+  
+  cmd = sprintf("virsh %s domstate %s", hvm, vm_name)
+  value = %x( #{cmd} )
+  if value.start_with?("shut off")
+    printf("%s\n","停止中")
+  end
+  if value.start_with?("running")
+    printf("%s\n","実行中")
+  end
+  finish_tm(0)
+end
+
+##
+## メイン処理
+##
+if __FILE__ == $0
+
+  ## コマンド引数の取得
+  arg_state = nil
+  ARGV.each_with_index do |arg, i|
+    if arg_state == nil
+      arg_state = arg
+      if arg_state == "-r"
+        $reuse_bootnode = true
+      end
+    else
+      if arg_state == "-f"
+        $config_yaml = arg
+      end
+      if arg_state == "-n"
+        $target_host = arg
+      end
+      arg_state = nil
+    end
+  end
+
+  vm_config = read_yaml_config($config_yaml)
+
+  $vm_config_array.each do |val|
+    node = eval(val)
+    if $target_host.nil?
+      if $reuse_bootnode == true
+        if node['name'].start_with?("bootnode")
+          puts "スキップ ", node['name']
+        else
+          status_vm(node)
+        end
+      else
+        status_vm(node)
+      end
+    else
+      if $target_host == node['name']
+        status_vm(node)
+      end
+    end
+  end # END OF NODE
+end

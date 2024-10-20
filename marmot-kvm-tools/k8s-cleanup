@@ -1,0 +1,21 @@
+#!/bin/bash
+
+while getopts f: flag
+do
+    case "${flag}" in
+        f) CONFIGFILE=${OPTARG};;
+    esac
+done
+
+if [ -z "$CONFIGFILE" ]; then
+   CONFIGFILE=$(cat .vm_running_config.dat)
+fi
+
+
+/usr/local/bin/pb-cleanup
+/usr/local/bin/pb-setup -f $CONFIGFILE
+/usr/local/bin/vm-destroy -f $CONFIGFILE
+sudo rm -fr __work
+
+rm -f $HOME/.ssh/known_hosts.old
+mv $HOME/.ssh/known_hosts $HOME/.ssh/known_hosts.old

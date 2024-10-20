@@ -1,0 +1,16 @@
+#
+# 外部向けCoreDNSのダウンロードとインストール
+#
+
+# 必要なコードのダウンロード
+- include_tasks: dl_coredns.yaml
+#  when:
+#    - ansible_facts.hostname is match(download_node)
+
+
+# 必要なコードのダウンロード
+- include_tasks: install_coredns.yaml
+#  when:
+#    - ansible_facts.hostname is not match(download_node)
+
+

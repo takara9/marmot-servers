@@ -1,0 +1,52 @@
+##
+## Configure the Kubernetes API Server
+##
+##
+#
+- debug: msg="{{ r_k8s_binary }}/kube-apiserver"
+
+- name: copy kube-apiserver
+  copy:
+    src: "{{ r_k8s_binary }}/kube-apiserver"
+    dest: /usr/local/bin
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+
+- name: copy kubectl
+  copy:
+    src: "{{ r_k8s_binary }}/kubectl"
+    dest: /usr/local/bin
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+
+- name: copy admin.kubeconfig
+  copy:
+    src: "{{ r_ca_kubeconfig }}/admin.kubeconfig"
+    dest: /etc/kubernetes/kube-apiserver.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: copy  kube-apiserver.service
+  template:
+    src: kube-apiserver.service.j2
+    dest: /etc/systemd/system/kube-apiserver.service
+    owner: root
+    group: root
+    mode: '0644'
+  when:
+    - kubernetes_version is version('1.20.0', '<')
+
+- name: copy  kube-apiserver.service
+  template:
+    src: kube-apiserver.service-v1.20.j2
+    dest: /etc/systemd/system/kube-apiserver.service
+    owner: root
+    group: root
+    mode: '0644'
+  when:
+    - kubernetes_version is version('1.20.0', '>')

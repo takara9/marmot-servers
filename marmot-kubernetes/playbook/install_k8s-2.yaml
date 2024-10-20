@@ -1,0 +1,17 @@
+#
+# masterクラスタのための内部LBの構築
+#
+- name: Setup the internal LoadBalancer
+  hosts:
+  - mlbs
+  vars:
+  - lb_pos: "Internal"
+  - download_node: bootnode	
+  gather_facts: yes
+  become: yes
+  become_user: root
+  become_method: sudo
+  roles:
+    - haproxy
+    - keepalived
+

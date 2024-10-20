@@ -1,0 +1,41 @@
+- name: Git Repositorys Create a ext4 filesystem on /dev/sdb and check disk blocks
+  filesystem:
+    fstype: ext4
+    dev: "{{ disk1 }}"
+
+- name: Create mount point
+  file:
+    path: "{{ gitlab_data }}"
+    owner: root
+    group: root
+    mode: '2775'
+    state: directory
+
+- name: "Mount up device by {{ disk1 }}"
+  mount:
+    path: "{{ gitlab_data }}"
+    src:  "{{ disk1 }}"
+    fstype: ext4
+    state: mounted
+
+
+
+- name: Git Repositorys Create a ext4 filesystem on /dev/sdb and check disk blocks
+  filesystem:
+    fstype: ext4
+    dev: "{{ disk2 }}"
+
+- name: Create mount point
+  file:
+    path: "{{ gitlab_bin }}"
+    owner: root
+    group: root
+    mode: '2775'
+    state: directory
+
+- name: "Mount up device by {{ disk2 }}"
+  mount:
+    path: "{{ gitlab_bin }}"
+    src:  "{{ disk2 }}"
+    fstype: ext4
+    state: mounted

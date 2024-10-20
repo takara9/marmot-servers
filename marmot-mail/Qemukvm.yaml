@@ -1,0 +1,74 @@
+#
+# 最小構成のメールサーバー
+#
+
+
+# ドメイン名
+domain: labo.local
+
+## クラスタ名
+cluster_name: infra
+
+## ハイパーバイザーのタイプ指定
+##  kvm : QEMU+KVM + virsh
+hypervisor: kvm
+
+
+## 仮想マシンイメージの設定
+##
+image_template_path: /home/images
+image_default_path:  /home/images
+
+
+#qcow2_image: ubuntu18.04.qcow2
+#os_variant:  ubuntu18.04
+
+qcow2_image: ubuntu20.04-amd.qcow2
+os_variant:  ubuntu20.04
+
+
+## Cluster Network
+private_ip_subnet: 172.16.0.0/16
+public_ip_subnet:  192.168.1.0/24
+
+public_ip_gw:  192.168.1.1
+public_ip_dns: 192.168.1.8
+
+### Network device and config
+net_dev_default: enp1s0
+net_dev_private: enp2s0
+net_dev_public:  enp3s0
+
+
+### Master, Worker, Internal/Frontend Loadbalancer and bootnode
+vm_spec:
+  - name: "mail"
+    cpu: 1
+    memory: 2048
+    private_ip: "172.16.0.220"
+    public_ip:  "192.168.1.220"
+    storage:
+    - 10
+    playbook: install.yaml
+    comment: "Test node #1"
+
+#  - name: "test1"
+#    cpu: 1
+#    memory: 2048
+#    private_ip: "172.16.0.101"
+#    storage:
+#    - 10
+#    playbook: install.yaml    
+#    comment: "Test node #2"
+#
+#  - name: "test2"
+#    cpu: 1
+#    memory: 2048
+#    private_ip: "172.16.0.102"
+#    storage:
+#    - 10
+#    playbook: install.yaml    
+#    comment: "Test node #2"
+
+
+

@@ -1,0 +1,12 @@
+[Unit]
+Description=Slapd
+Documentation=https://www.openldap.org/doc
+
+[Service]
+ExecStart=/ldap/libexec/slapd -F /ldap/etc/slapd.d -h "ldap:/// ldapi:/// ldaps:///"
+Restart=on-failure
+RestartSec=5
+Type=forking
+
+[Install]
+WantedBy=multi-user.target

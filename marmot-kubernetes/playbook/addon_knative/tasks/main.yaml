@@ -1,0 +1,126 @@
+#
+# Knative のデプロイ
+#
+#- debug: msg="{{ ansible_facts.hostname }}"
+
+- name: check knative
+  stat:
+    path: "{{ cadmin_home }}/knative-{{ knative_version }}/serving-core.yaml"
+  register: file_knative
+
+- name: mkdir knative-{{ knative_version }}
+  file:
+    path:  "{{ cadmin_home }}/knative-{{ knative_version }}"
+    state: directory
+    owner: "{{ cluster_admin }}"
+    group: "{{ cluster_admin }}"
+    mode: '0755'
+  when: file_knative.stat.exists == False
+
+#
+# KNコマンドのインストール
+# 
+- name: install kn command
+  get_url:
+    url: https://storage.googleapis.com/knative-nightly/client/latest/kn-linux-amd64
+    dest: /usr/local/bin/kn
+    mode: '0755'
+    owner: root
+    group: root
+
+
+#
+# Knative サービングのマニフェストダウンロード
+#
+- name: Download manifest serving-crds.yaml
+  become_user: "{{ cluster_admin }}"
+  get_url:
+    url: "https://github.com/knative/serving/releases/download/{{ knative_version }}/serving-crds.yaml"
+    dest: "{{ cadmin_home }}/knative-{{ knative_version }}/serving-crds.yaml"
+  when: file_knative.stat.exists == False
+
+- name: Download manifest serving-core.yaml
+  become_user: "{{ cluster_admin }}"
+  get_url:
+    url: "https://github.com/knative/serving/releases/download/{{ knative_version }}/serving-core.yaml"
+    dest: "{{ cadmin_home }}/knative-{{ knative_version }}/serving-core.yaml"
+  when: file_knative.stat.exists == False
+  
+- name: Download manifest release.yaml
+  become_user: "{{ cluster_admin }}"
+  get_url:
+    url: "https://github.com/knative/net-istio/releases/download/{{ knative_version2 }}/release.yaml"
+    dest: "{{ cadmin_home }}/knative-{{ knative_version }}/release.yaml"
+  when: file_knative.stat.exists == False
+
+#
+# Knative サービング の デプロイ
+#
+- name: Deploy Knative serving
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl apply -f serving-crds.yaml
+    kubectl apply -f serving-core.yaml
+    kubectl apply -f release.yaml
+  args:
+    chdir: "{{ cadmin_home }}/knative-{{ knative_version }}/"
+  when: file_knative.stat.exists == False
+  
+#
+# Knative エベンティングのダウンロード
+#
+- name: Download manifest eventing-crds.yaml
+  become_user: "{{ cluster_admin }}"
+  get_url:
+    url: "https://github.com/knative/eventing/releases/download/{{ knative_version }}/eventing-crds.yaml"
+    dest: "{{ cadmin_home }}/knative-{{ knative_version }}/eventing-crds.yaml"
+  when: file_knative.stat.exists == False
+
+- name: Download manifest eventing-core.yaml
+  become_user: "{{ cluster_admin }}"
+  get_url:
+    url: "https://github.com/knative/eventing/releases/download/{{ knative_version }}/eventing-core.yaml"
+    dest: "{{ cadmin_home }}/knative-{{ knative_version }}/eventing-core.yaml"
+  when: file_knative.stat.exists == False
+
+- name: Download manifest in-memory-channel.yaml
+  become_user: "{{ cluster_admin }}"
+  get_url:
+    url: "https://github.com/knative/eventing/releases/download/{{ knative_version }}/in-memory-channel.yaml"
+    dest: "{{ cadmin_home }}/knative-{{ knative_version }}/in-memory-channel.yaml"
+  when: file_knative.stat.exists == False
+
+
+#
+# Knative serving ans eventing の デプロイ
+#
+- name: Deploy Knative serving
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl apply -f eventing-crds.yaml
+    kubectl apply -f eventing-core.yaml
+    kubectl apply -f in-memory-channel.yaml
+  args:
+    chdir: "{{ cadmin_home }}/knative-{{ knative_version }}/"
+
+
+#
+# ドメイン名の変更
+#
+- template:
+    src: configmap-knative-domain.yaml
+    dest: "{{ cadmin_home }}/knative-{{ knative_version }}/configmap-knative-domain.yaml"
+    owner: "{{ cluster_admin }}"
+    group: "{{ cluster_admin }}"
+    mode: '0644'
+
+- name: change knative domain 
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl apply -f configmap-knative-domain.yaml
+  args:
+    chdir: "{{ cadmin_home }}/knative-{{ knative_version }}/"
+
+
+
+  

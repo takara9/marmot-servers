@@ -1,0 +1,16 @@
+hypervisor_specs:
+  - nodename: "aoba"
+    cpu: 32
+    memory: 131072
+    ip-addr: 192.168.1.35/24
+    
+  - nodename: "nagato"
+    cpu: 32
+    memory: 131072
+    ip-addr: 192.168.1.34/24
+    
+  - nodename: "akatsuki"  
+    cpu: 16
+    memory:  65536
+    ip-addr: 192.168.1.32/24    
+    

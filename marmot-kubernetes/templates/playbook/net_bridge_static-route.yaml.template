@@ -1,0 +1,17 @@
+- name: Insert/Update netplan
+__SHELL_COMMAND__
+
+- blockinfile:
+__DEST_NETPLAN__
+
+    insertafter: '172.16.*'
+    regexp: '172.16.*'
+    state: present
+    block: |2
+            routes:
+__SET_ROUTING__
+
+
+- shell: netplan apply
+
+

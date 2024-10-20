@@ -1,0 +1,287 @@
+#!/usr/bin/ruby
+# coding: utf-8
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+require 'mb_string'
+require 'yaml'
+require 'json'
+require 'fileutils'
+require 'date'
+
+##
+## ステップの開始
+##
+def start_tm(msg)
+  t = Time.new
+  msg = "\u001b[33m" + t.strftime("%Y-%m-%d %H:%M:%S") + " " + msg + "\u001b[37m"
+  printf("%s", msg)
+end
+
+##
+## ステップの終了
+##
+def finish_tm(ret)
+  t = Time.new  
+  msg = "\u001b[33m" + t.strftime("%Y-%m-%d %H:%M:%S") + "\u001b[37m"
+  printf("%s ", msg)
+
+  if ret == 0
+    printf(" \u001b[32m成功\u001b[37m\n")
+  else
+    printf(" \u001b[31m失敗\u001b[37m\n")
+  end
+
+end
+
+
+##
+## sudoer
+##   ローカルにあることを前提になっている
+##
+def write_sudoers(path, admin_name)
+  ofn = path + "/etc/sudoers.d/" + admin_name
+  File.open(ofn, "w") do |w|
+    w.write sprintf("Defaults:%s !requiretty\n", admin_name)
+    w.write sprintf("%s ALL = (ALL) NOPASSWD:ALL\n", admin_name)
+  end
+  FileUtils.chown_R("root","root", ofn)
+  FileUtils.chmod(0440, ofn)
+end
+
+##
+## Ubuntu netplan の設定ファイル作成
+## 　ローカルで作成後にリモートへ転送しないとならない
+##
+def create_netplan_from_config(node)
+  netmask_priv = $conf['private_ip_subnet'].split('/')
+  netmask_pub  = $conf['public_ip_subnet'].split('/')  
+  
+  ofn = "01-netcfg.yaml"
+  File.open(ofn, "w") do |w|
+    w.write sprintf("network:\n")
+    w.write sprintf("  version: 2\n")
+    w.write sprintf("  ethernets:\n")
+    w.write sprintf("    %s:\n", $conf['net_dev_default'])
+    if ! node['public_ip'].nil?
+      w.write sprintf("      dhcp4: false\n")
+    else
+      w.write sprintf("      dhcp4: true\n")
+      w.write sprintf("      dhcp4-overrides:\n")
+      w.write sprintf("        use-dns: false\n")
+    end
+    if ! node['private_ip'].nil?
+      w.write sprintf("    %s:\n", $conf['net_dev_private'])
+      w.write sprintf("      addresses:\n")
+      w.write sprintf("      - %s/%s\n", node['private_ip'], netmask_priv[1])
+      if node['public_ip'].nil?
+        w.write sprintf("      nameservers:\n")
+        w.write sprintf("        addresses:\n")
+        w.write sprintf("        - %s\n", $conf['public_ip_dns'])
+      end
+    end
+    if ! node['public_ip'].nil?
+      w.write sprintf("    %s:\n", $conf['net_dev_public'])
+      w.write sprintf("      addresses:\n")
+      w.write sprintf("      - %s/%s\n", node['public_ip'], netmask_pub[1])
+      w.write sprintf("      gateway4: %s\n", $conf['public_ip_gw'])
+      w.write sprintf("      nameservers:\n")
+      w.write sprintf("        addresses:\n")
+      w.write sprintf("        - %s\n", $conf['public_ip_dns'])
+    end
+  end
+  return 0
+end
+
+
+##
+## OSイメージのカスタマイズ
+##   ファイルの変更　　　　　　ローカルが前提になった処理
+##
+def copy_ssh_to_vdisk(user_name,path)
+  
+  if user_name == "root"
+    ssh_path = path + "/" + user_name + "/.ssh"
+  else
+    ssh_path = path + "/home/" + user_name + "/.ssh"
+  end
+  ssh_dir  = ssh_path + "/"
+
+  FileUtils.rmtree(ssh_path)
+  FileUtils.mkdir(ssh_path)
+  FileUtils.cp("__work/id_rsa", ssh_dir + "id_rsa")
+  FileUtils.cp("__work/id_rsa.pub", ssh_dir + "id_rsa.pub")
+  FileUtils.cp("__work/id_rsa.pub", ssh_dir + "authorized_keys")    
+  FileUtils.chmod(0700, ssh_path)
+  FileUtils.chmod(0600, ssh_dir + "authorized_keys")
+  FileUtils.chmod(0600, ssh_dir + "id_rsa.pub")  
+  if user_name == "root"
+    FileUtils.chown_R("root","root", ssh_path)    
+  else
+    FileUtils.chown_R(1000,1000, ssh_path)
+  end
+end
+
+
+
+##
+## OSイメージのカスタマイズ
+##
+def setup_os_vdisk(path,vm_name)
+
+  cmd = sprintf("sed -i 's/^#PermitRootLogin/PermitRootLogin/' %s/etc/ssh/sshd_config", path)
+  #puts %x( #{cmd} )
+  #puts cmd
+  %x( #{cmd} )
+  
+  File.write( path + "/etc/hostname", vm_name)
+  
+  FileUtils.remove_entry(path + "/etc/netplan")
+  FileUtils.mkdir(path + "/etc/netplan")    
+  FileUtils.cp("01-netcfg.yaml", path + "/etc/netplan/01-netcfg.yaml")
+  
+  copy_ssh_to_vdisk("root", path)
+  copy_ssh_to_vdisk("ubuntu", path)  
+end
+
+
+##
+## OSイメージのカスタマイズ
+##
+def configure_os_vdisk(node)
+
+  # ネットワーク設定ファイルの作成
+  ret = create_netplan_from_config(node)
+  if ret != 0
+    return 1
+  end
+
+  #r_hvm = sprintf("tkr@%s",node['vm_host'])
+  #puts node
+
+  vm_name = ""
+  if defined? $conf['cluster_name'] and $conf['cluster_name'].to_s.length > 0
+    vm_name = sprintf("%s-%s", node['name'],$conf['cluster_name'])
+  else
+    vm_name = sprintf("%s", node['name'])
+  end
+  
+  
+  ## OSテンプレートのイメージをコピー
+  #step_start2("OSイメージのコピー")
+  #cmd = sprintf("cp /home/images/%s /home/images/%s.qcow2","ubuntu18.04.qcow2", vm_name)
+  #cmd = sprintf("cp /home/images/%s /home/images/%s.qcow2",$conf['qcow2_image'], vm_name)
+  #cmd = sprintf("cp %s/%s %s/%s.qcow2",$conf['image_template_path'], $conf['image_default_path'], $conf['qcow2_image'], vm_name)
+
+  start_tm("OSテンプレートのイメージをコピー")
+  cmd = sprintf("cp %s/%s %s/%s.qcow2",$conf['image_template_path'],$conf['qcow2_image'], $conf['image_default_path'],vm_name)
+  
+  #puts cmd
+  %x( #{cmd} )
+  retc = $?.exitstatus
+  if retc == 0
+    finish_tm(0)
+  else
+    finish_tm(1)
+    return retc
+  end
+    
+  #step_end($?.exitstatus)
+  #printf("\n")
+
+
+  begin
+    ## コピーした仮想ディスクをファイルシステムにマウント
+    #step_start2("OS仮想ディスクをローカルへマウント")
+    nbd_dev = "/dev/nbd2"
+  
+    ## デバイスドライバの設定
+    cmd = sprintf("modprobe nbd max_part=8")
+    #puts cmd
+    %x( #{cmd} )
+  
+    ## ブロックデバイスとして活性化
+    #cmd = sprintf("qemu-nbd --connect=%s /home/images/%s.qcow2", nbd_dev, vm_name)
+    cmd = sprintf("qemu-nbd --connect=%s %s/%s.qcow2", nbd_dev,$conf['image_default_path'], vm_name)
+    #puts cmd
+    %x( #{cmd} )
+  
+    ## ブロックデバイスのリスト表示
+    cmd = sprintf("sudo fdisk -l %s", nbd_dev)
+    #puts cmd
+    %x( #{cmd} )
+  
+    ## マウントポイントの作成
+    cmd = sprintf("mkdir ./_%s", vm_name)
+    #puts cmd
+    %x( #{cmd} )
+
+    ## 仮想ストレージのマウント
+    cmd = sprintf("sudo sync && sync")
+    #puts cmd
+    %x( #{cmd} )
+    
+    path = sprintf("./_%s", vm_name)
+    cmd = sprintf("sudo mount %sp2 %s", nbd_dev, path)
+    #puts cmd
+    %x( #{cmd} )
+
+    #printf("\n")
+  rescue SystemStackError
+    #puts "OSテンプレートマウント失敗 仮想サーバー起動中止\n"
+    cmd = sprintf("qemu-nbd --disconnect %s",nbd_dev) 
+    %x( #{cmd} )
+    return 1
+  end
+
+
+  ##
+  ## 仮想ディスクの設定変更
+  ##
+
+  ## 仮想サーバーのホスト名設定
+  setup_os_vdisk(path,node['name'])
+
+  ## sudoersの設定追加
+  write_sudoers(path,"ubuntu")
+
+  ## マシンIDを設定
+  cmd = sprintf("uuidgen -t |sed 's/-//g' > _%s/etc/machine-id", vm_name)
+  %x( #{cmd} )
+    
+  ## アンマウント
+  loop do
+    cmd = sprintf("umount _%s", vm_name)
+    %x( #{cmd} )
+    
+    if $?.exitstatus == 0
+      ## Delete mount point
+      cmd = sprintf("rmdir _%s", vm_name)
+      %x( #{cmd} )
+      ## デバイスのデタッチ
+      cmd = sprintf("qemu-nbd --disconnect %s",nbd_dev) 
+      %x( #{cmd} )
+      break
+    end
+  end
+
+  #printf("\n")
+  return 0
+end
+
+
+
+##
+## メイン処理
+##
+if __FILE__ == $0
+
+  file = File.read('__work/k8s_cluster_config.json')
+  $conf = JSON.parse(file)
+
+  file = File.read('__work/node.json')
+  node = eval(JSON.parse(file))
+  
+  configure_os_vdisk(node)  
+
+end # END OF MAIN   

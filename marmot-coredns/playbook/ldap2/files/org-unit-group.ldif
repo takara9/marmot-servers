@@ -1,0 +1,6 @@
+dn: ou=group,dc=labo,dc=local
+objectclass: organizationalUnit
+ou: group
+
+
+

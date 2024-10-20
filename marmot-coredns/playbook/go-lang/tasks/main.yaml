@@ -1,0 +1,40 @@
+- name: Install sw packages
+  apt:
+    name: "{{ packages }}"
+    state: present
+  register: apt_res
+  retries: 5
+  until: apt_res is success    
+  vars:
+    packages:
+    - build-essential
+
+
+- name: Check golang tar
+  stat:
+    path: "{{ download_dir }}/go{{ GO_VER }}.linux-amd64.tar.gz"
+  register: regi_check_golang
+
+
+- name: download go-lang {{ GO_VER }}
+  get_url:
+    url: "https://dl.google.com/go/go{{ GO_VER }}.linux-amd64.tar.gz"
+    dest: "{{ download_dir }}"
+    mode: '0644'
+  when: regi_check_golang.stat.exists == False
+
+
+- name: install /usr/local/bin by untar
+  unarchive:
+    src:  "{{ download_dir }}/go{{ GO_VER }}.linux-amd64.tar.gz"
+    dest: "/usr/local"
+    remote_src: True
+  when: regi_check_golang.stat.exists == False   
+
+
+- name: set PATH for go-lang
+  shell: |
+     echo "export PATH=$PATH:/usr/local/go/bin" > /home/{{ cluster_admin }}/.profile
+     echo "export GOPATH=/home/{{ cluster_admin }}" >> /home/{{ cluster_admin }}/.profile
+  when: regi_check_golang.stat.exists == False   
+

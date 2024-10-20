@@ -1,0 +1,17 @@
+#
+# アドオン機能のインストール
+#   Helm
+#   CoreDNS
+#   Metrics Server
+#　 Dashboard
+#
+- name: Deploy addons
+  hosts: bootnode
+  gather_facts: yes
+  become: yes
+  roles:
+    #- addon_coredns  
+    - addon_helm3    
+    - addon_ingress
+    - addon_metrics-server
+    - addon_dashboard

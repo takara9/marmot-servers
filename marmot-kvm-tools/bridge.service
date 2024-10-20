@@ -1,0 +1,14 @@
+[Unit]
+Description=Job that runs your user script
+After=libvirt-guests.service
+
+
+[Service]
+ExecStart=/usr/sbin/ip link set enp3s0f1 master virbr1
+Type=oneshot
+RemainAfterExit=yes
+Restart=on-failure
+
+[Install]
+WantedBy = multi-user.target
+

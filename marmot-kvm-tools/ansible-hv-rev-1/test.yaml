@@ -1,0 +1,12 @@
+- name: Test Ansible-Playbook
+  gather_facts: yes
+  vars:
+  hosts:
+    - localhost
+  become: yes
+  roles:
+  tasks:
+    - debug: msg="{{ ansible_facts.default_ipv4 }}"
+    #- debug: msg="{{ ansible_facts }}"
+  
+

@@ -1,0 +1,103 @@
+#!/usr/bin/ruby
+# coding: utf-8
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+#
+# ハイパーバイザーのクラスタの
+# 仮想マシンの割り当て状態をリストする。
+#
+
+require 'etcdv3'
+require "json"
+require 'yaml'
+$conn = nil
+$conf = nil
+require_relative 'libruby/lib_scheduler.rb'
+
+
+require 'net/ping'
+
+def up?(host)
+    check = Net::Ping::External.new(host,1)
+    check.ping?
+end
+
+def start_vm(vm_name, hv_node)
+  printf("%20s : 起動中 ", vm_name)
+  hvm = ""
+  # libvirtd接続先作成
+  hvm = sprintf("--connect=qemu+tls://%s/system", hv_node)
+  retry_cnt = 10
+  loop do
+    cmd = sprintf("virsh %s domstate %s", hvm, vm_name)
+    value = %x( #{cmd} )
+    if value.start_with?("running")
+      printf("成功\n")
+      cmd = sprintf("virsh %s autostart %s", hvm, vm_name)
+      %x( #{cmd} )  
+      break
+    else
+      cmd = sprintf("virsh %s start %s", hvm, vm_name)      
+      %x( #{cmd} )
+    end
+    retry_cnt = retry_cnt - 1
+    if retry_cnt < 1
+      printf("失敗\n")
+      break
+    end
+    sleep 10
+  end
+end
+
+#
+# メイン
+#
+if __FILE__ == $0
+  etcd_connect()
+  begin
+    ##
+    ## ハイパーバイザーのリスト
+    ##
+    #printf("\n=== ハイパーバイザーの資源残存量 ===\n")
+    #printf("%-20s %-20s  %-10s  %-10s\n","HVノード名","IPアドレス","vCPU数", "RAM(MB)")
+    #hv_list = $conn.get('hvr1', range_end: 'hvr99')
+    #for hv in hv_list.kvs
+    #  hv = JSON.parse!(hv.value)
+    #  printf("%-20s  %-20s  %10d/%d  %10d/%d\n",hv['nodename'],hv['ip-addr'],hv['free-cpu'],hv['cpu'],hv['free-memory'], hv['memory'])
+    #end
+
+    ##
+    ## 仮想サーバーのリスト
+    ##
+    #printf("\n=== 仮想サーバーのリスト ===\n")
+    #printf("%-16s  %-7s %-4s %-8s %-20s %-16s %-16s\n","VM-Name","HV-Host", "vCPU", "RAM(MB)","DISK(GB)", "Pub-IP","Pri-IP")
+    vm_list = $conn.get('vm1', range_end: 'vm999', sort_order: 'ascend', sort_target: 'key')
+    for vm in vm_list.kvs
+      # VMリストをetcd から取り出し
+      vm = JSON.parse!(vm.value)
+
+      # ストレージの容量リストを生成
+      stg = []      
+      if vm['storage'].is_a?(Array)
+        for disk in vm['storage']
+          
+          if ! disk.is_a?(Numeric)
+            for disk in vm['storage']
+              stg.push(disk['size'])
+            end
+          else
+            stg = vm['storage']
+          end
+          break
+
+        end
+      end
+      #printf("%-16s  %-7s %-4d %-8d %-20s %-16s %-16s\n",vm['vm_name'],vm['hv_node'],vm['cpu'],vm['memory'],stg,vm['public_ip'],vm['private_ip'])
+      start_vm(vm['vm_name'],vm['hv_node'])
+    end
+  rescue SystemStackError
+    printf("\n*** ETCDとの通信エラー ***\n")
+  end
+end # END OF MAIN   
+

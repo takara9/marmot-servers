@@ -1,0 +1,17 @@
+- name: OS環境設定
+  hosts: all
+  gather_facts: yes
+  become: yes
+  vars:
+    - disks:
+       - { dev: "/dev/vdb", mountpoint: "/data1" }
+       - { dev: "/dev/vdc", mountpoint: "/data2" }
+       - { dev: "/dev/vdd", mountpoint: "/data3" }
+       - { dev: "/dev/vde", mountpoint: "/data4" } 
+
+  roles:
+    - vdisks
+    - base_linux
+    - minio
+    - download_certs
+    - nginx    

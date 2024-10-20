@@ -1,0 +1,6 @@
+# group, group, labo.local
+dn: cn=group,ou=group,dc=labo,dc=local
+objectClass: posixGroup
+gidNumber: 10000
+cn: group
+

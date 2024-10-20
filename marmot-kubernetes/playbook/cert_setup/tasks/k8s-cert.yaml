@@ -1,0 +1,261 @@
+- name: Create Kubernetes CA working directory
+  file:
+    path: "{{ ca_home2 }}"
+    state: directory
+    owner: root
+    group: root
+
+#
+# Kubernetes CAの作成
+#
+- name: Create CA
+  template:  
+    src: ca-config.json
+    dest: "{{ ca_home2 }}"
+    owner: root
+    group: root
+    mode: '0644'
+- template:
+    src: ca-csr.json
+    dest: "{{ ca_home2 }}"
+    owner: root
+    group: root
+    mode: '0644'
+- name: check existing ca.pem
+  stat:
+    path: "{{ ca_home2 }}/ca.pem"
+  register: file_ca
+- shell: |
+    cfssl gencert -initca ca-csr.json | cfssljson -bare ca
+  args:
+    chdir: "{{ ca_home2 }}"
+  when: file_ca.stat.exists == False
+
+#
+# kubectl の管理者用クライアント証明書
+# 　The Admin Client Certificate
+#
+- name: Admin Client Certificate
+  template:
+    src: admin-csr.json
+    dest: "{{ ca_home2 }}"
+    owner: root
+    group: root
+    mode: '0644'
+- name: check existing admin.pem
+  stat:
+    path: "{{ ca_home2 }}/admin.pem"
+  register: file_admin
+- shell: |
+    cfssl gencert \
+      -ca=ca.pem \
+      -ca-key=ca-key.pem \
+      -config=ca-config.json \
+      -profile=kubernetes \
+    admin-csr.json | cfssljson -bare admin
+  args:
+    chdir: "{{ ca_home2 }}"
+  when: file_admin.stat.exists == False
+
+
+# 
+# Controller-Manager のクライアント証明書
+#   The Controller Manager Client Certificate
+#
+- name: Controller Manager Client Certificate
+  template:
+    src: kube-controller-manager-csr.json
+    dest: "{{ ca_home2 }}"
+    owner: root
+    group: root
+    mode: '0644'
+- name: check existing kube-controller-manager.pem
+  stat:
+    path: "{{ ca_home2 }}/kube-controller-manager.pem"
+  register: file_kube_controller_manager
+- shell: |
+    cfssl gencert \
+      -ca=ca.pem \
+      -ca-key=ca-key.pem \
+      -config=ca-config.json \
+      -profile=kubernetes \
+    kube-controller-manager-csr.json | cfssljson -bare kube-controller-manager    
+  args:
+    chdir: "{{ ca_home2 }}"
+  when: file_kube_controller_manager.stat.exists == False
+
+
+#
+# Kubeプロキシのクライアント証明書
+#   The Kube Proxy Client Certificate
+#
+- name: Kube Proxy Client Certificate
+  template:
+    src: kube-proxy-csr.json
+    dest: "{{ ca_home2 }}"
+    owner: root
+    group: root
+    mode: '0644'
+- name: check existing kube-proxy.pem
+  stat:
+    path: "{{ ca_home2 }}/kube-proxy.pem"
+  register: file_kube_proxy
+- shell: |
+    cfssl gencert \
+      -ca=ca.pem \
+      -ca-key=ca-key.pem \
+      -config=ca-config.json \
+      -profile=kubernetes \
+    kube-proxy-csr.json | cfssljson -bare kube-proxy
+  args:
+    chdir: "{{ ca_home2 }}"
+  when: file_kube_proxy.stat.exists == False
+
+
+# 
+# スケジューラーのクライアント証明書
+#   The Scheduler Client Certificate
+#
+- name: Scheduler Client Certificate
+  template:
+    src: kube-scheduler-csr.json
+    dest: "{{ ca_home2 }}"
+    owner: root
+    group: root
+    mode: '0644'
+- name: check existing kube-scheduler.pem
+  stat:
+    path: "{{ ca_home2 }}/kube-scheduler.pem"
+  register: file_kube_scheduler
+- shell: |
+    cfssl gencert \
+      -ca=ca.pem \
+      -ca-key=ca-key.pem \
+      -config=ca-config.json \
+      -profile=kubernetes \
+    kube-scheduler-csr.json | cfssljson -bare kube-scheduler
+  args:
+    chdir: "{{ ca_home2 }}"
+  when: file_kube_scheduler.stat.exists == False
+
+
+#
+# APIサーバーのサーバー証明書
+#   The Kubernetes API Server Certificate
+#
+- name: Kubernetes API Server Certificate
+  template:
+    src: kubernetes-csr.json
+    dest: "{{ ca_home2 }}"
+    owner: root
+    group: root
+    mode: '0644'
+- name: check existing kubernetes.pem
+  stat:
+    path: "{{ ca_home2 }}/kubernetes.pem"
+  register: file_kubernetes
+- shell: |
+    cfssl gencert \
+      -ca=ca.pem \
+      -ca-key=ca-key.pem \
+      -config=ca-config.json \
+      -hostname={{ host_list_k8sapi }} \
+      -profile=kubernetes \
+    kubernetes-csr.json | cfssljson -bare kubernetes
+  args:
+    chdir: "{{ ca_home2 }}"
+  when: file_kubernetes.stat.exists == False
+    
+
+#
+# サービスアカウントの公開鍵ペア
+#   The Service Account Key Pair
+#
+- name: Service Account Key Pair
+  template:
+    src: service-account-csr.json
+    dest: "{{ ca_home2 }}"
+    owner: root
+    group: root
+    mode: '0644'
+- name: check existing service-account.pem
+  stat:
+    path: "{{ ca_home2 }}/service-account.pem"
+  register: file_service_account
+- shell: |
+    cfssl gencert \
+      -ca=ca.pem \
+      -ca-key=ca-key.pem \
+      -config=ca-config.json \
+      -hostname={{ host_list_k8sapi }} \
+      -profile=kubernetes \
+     service-account-csr.json | cfssljson -bare service-account
+  args:
+    chdir: "{{ ca_home2 }}"
+  when: file_service_account.stat.exists == False
+
+
+- name: chmod 0644 admin-key.pem
+  file:
+    path: "{{ ca_home2 }}/admin-key.pem"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: chmod 0644 ca-key.pem
+  file:
+    path: "{{ ca_home2 }}/ca-key.pem"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: chmod 0644 kube-controller-manager-key.pem
+  file:
+    path: "{{ ca_home2 }}/kube-controller-manager-key.pem"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: chmod 0644 kube-proxy-key.pem
+  file:
+    path: "{{ ca_home2 }}/kube-proxy-key.pem"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: chmod 0644 kube-scheduler-key.pem
+  file:
+    path: "{{ ca_home2 }}/kube-scheduler-key.pem"
+    owner: root
+    group: root
+    mode: '0644'
+
+
+- name: chmod 0644 kubernetes-key.pem
+  file:
+    path: "{{ ca_home2 }}/kubernetes-key.pem"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: chmod 0644 service-account-key.pem
+  file:
+    path: "{{ ca_home2 }}/service-account-key.pem"
+    owner: root
+    group: root
+    mode: '0644'
+
+#
+# v1.20 以上で必須
+#
+# 理由は以下
+# v1.20 Release Notes
+#  TokenRequest / TokenRequestProjection graduates to General Availability
+# https://kubernetes.io/docs/setup/release/notes/#tokenrequest-tokenrequestprojection-graduates-to-general-availability
+#
+- shell: |
+    openssl genrsa -out sa.key 2048
+    openssl rsa -in sa.key -pubout -out sa.pub
+  args:
+    chdir: "{{ ca_home2 }}"
+

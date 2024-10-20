@@ -1,0 +1,221 @@
+# 
+# ブートノードに共通ソフトをダウンロードする
+# 
+- name: Download software packeges
+  vars:
+    download_node: bootnode
+  hosts:
+  - bootnode
+  become: yes
+  roles:
+    - bootnode
+    - role: runtime_containerd
+      when: container_runtime == "containerd"
+    - role: runtime_cri-o
+      when: container_runtime == "cri-o"
+    - role: runtime_docker
+      when: container_runtime == "docker"
+    - role: net_flannel
+      when: pod_network == "flannel"
+    - etcd
+    - kubernetes
+    - cert_setup
+    - coredns_external
+
+#
+# クラスタの全てのノードからbootnodeのNFSサーバーをマウントする
+#
+- name: Mount NFS (bootnode)
+  hosts: all
+  become: yes
+  tasks:
+  - include_tasks: tasks/setup_k8s_dirs.yml
+  - name: mount bootnode /srv/k8s
+    mount:
+      path: /mnt
+      src: bootnode:/srv/k8s
+      fstype: nfs
+      state: mounted
+
+#
+# NFS上ディレクトリで keepalivedをビルドするため、NFSマウント後に配置
+#
+- name: build keepalived
+  vars:
+    download_node: bootnode
+  hosts:
+    - bootnode
+  become: yes
+  roles:
+    - keepalived
+
+
+#
+# masterクラスタのための内部LBの構築
+#
+- name: Setup the internal LoadBalancer
+  hosts:
+  - mlbs
+  vars:
+  - lb_pos: "Internal"
+  - download_node: bootnode
+  gather_facts: yes
+  become: yes
+  become_user: root
+  become_method: sudo
+  roles:
+    - haproxy
+    - keepalived
+
+
+#
+# マスターノードのセットアップ
+#
+- name: Configure etcd on masters
+  hosts:
+  - masters
+  vars:
+  - download_node: bootnode
+  gather_facts: yes
+  become: yes
+  roles:
+    - etcd
+    # コンテナランタイムを選択してインストール
+    - role: runtime_containerd
+      when: container_runtime == "containerd" and pod_network != "bridge"
+    - role: runtime_docker
+      when: container_runtime == "docker" and pod_network != "bridge"
+    - role: runtime_cri-o
+      when: container_runtime == "cri-o" and pod_network != "bridge"
+    # K8sマスターノードのモジュール導入
+    - node_master
+    # K8sワーカーノードのモジュール導入
+    - role: node_worker
+      when: pod_network == "flannel" or pod_network == "calico"
+    # ネットワークを設定 Calicoは別途導入
+    - role: net_bridge
+      when: pod_network == "bridge"
+    - role: net_flannel
+      when: pod_network == "flannel"
+  tasks:
+    # kubectlコマンドをログインシェルから使えるように設定する
+    - include_tasks: tasks/kubeconfig_setup.yml
+
+#
+#  RBAC の設定
+#
+- name: Configure RBAC
+  hosts:
+  - bootnode
+  vars:
+    - download_node: bootnode
+  gather_facts: yes
+  become: yes
+  tasks:
+    # 処理完了まで時間を取らないと失敗する
+    # ネットワークやCPUの条件により調整する
+    - wait_for:
+        timeout: 100
+    # RBAC設定を追加
+    - include_tasks: tasks/config_rbac_kubelet.yml
+    # kubectlコマンドをログインシェルから使えるように設定する
+    - include_tasks: tasks/kubeconfig_setup.yml
+
+
+#
+# 外部リクエストをk8sクラスタ内へ導く外部LBを設定
+#
+- name: Setup the external LoadBalancer
+  hosts:
+  - elbs
+  vars:
+    - lb_pos: "Frontend"
+    - download_node: bootnode
+  gather_facts: yes
+  become: yes
+  become_user: root
+  become_method: sudo
+  roles:
+    - haproxy
+    - keepalived
+    - coredns_external
+    - loadbalancer_controller
+
+
+#
+# ワーカーノードのセットアップ
+#
+- name: Configure worker nodes
+  hosts:
+  - nodes
+  - storages
+  vars:
+    - download_node: bootnode
+  gather_facts: yes
+  become: yes
+  roles:
+    # コンテナランタイムを選択してインストール
+    - role: runtime_containerd
+      when: container_runtime == "containerd"
+    - role: runtime_docker
+      when: container_runtime == "docker"
+    - role: runtime_cri-o
+      when: container_runtime == "cri-o"
+    # ネットワークを設定 Calicoはの場合は別途導入
+    - node_worker
+    - role: net_bridge
+      when: pod_network == "bridge"
+    - role: net_flannel
+      when: pod_network == "flannel"
+
+
+#
+# ノードへロール設定、ノードラベル設定
+# マスターノードへのtaint設定
+#
+- name: Configure cluster
+  hosts:
+  - bootnode
+  gather_facts: yes
+  become: yes
+  tasks:
+    # ノードのリスト読み込み
+    - include_vars:
+        dir: vars
+    #  flannel使用時にマスターノードへのtaint設定
+    - include_tasks: tasks/role_master.yaml
+      when:
+      - pod_network == "flannel" or pod_network == "calico"
+    # 残骸ではなく、Waitがないと、次のコマンドが失敗する
+    - wait_for:
+        timeout: 20
+    # ワーカーノードにロール設定
+    - include_tasks: tasks/role_worker.yaml
+    # ストレージノードにロール設定
+    - include_tasks: tasks/role_storage.yaml
+      when:
+      - storage_node == True
+  roles:
+    # Calicoマニフェストデプロイ
+    - role: net_calico
+      when: pod_network == "calico"
+
+#
+# アドオン機能のインストール
+#   Helm
+#   CoreDNS
+#   Metrics Server
+#　 Dashboard
+#
+- name: Deploy addons
+  hosts: bootnode
+  gather_facts: yes
+  become: yes
+  roles:
+    - addon_helm3
+    - addon_coredns
+    - addon_metrics-server
+    - addon_dashboard
+    - addon_ingress
+
+

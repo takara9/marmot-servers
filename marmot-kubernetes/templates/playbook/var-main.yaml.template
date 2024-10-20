@@ -1,0 +1,7 @@
+#
+# ノードのリストをAnsibleのメモリ変数として取り込む
+#
+
+
+nodes:
+__AUTO_CONFIG__

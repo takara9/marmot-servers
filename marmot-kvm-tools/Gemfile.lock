@@ -1,0 +1,28 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    etcdv3 (0.11.3)
+      grpc (~> 1.17)
+    google-protobuf (3.17.3)
+    googleapis-common-protos-types (1.2.0)
+      google-protobuf (~> 3.14)
+    grpc (1.40.0)
+      google-protobuf (~> 3.15)
+      googleapis-common-protos-types (~> 1.0)
+    mb_string (0.2.0)
+      unicode-display_width (~> 2.0)
+    net-ping (2.0.8)
+    unicode-display_width (2.0.0)
+    yaml (0.1.1)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  etcdv3
+  mb_string
+  net-ping (~> 2.0, >= 2.0.8)
+  yaml
+
+BUNDLED WITH
+   2.1.4

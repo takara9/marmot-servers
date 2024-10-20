@@ -1,0 +1,46 @@
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  namespace: istio-system
+  name: istio-controlplane
+spec:
+  profile: demo
+  components:
+    ingressGateways:
+      - name: cluster-local-gateway
+        enabled: true
+        label:
+          istio: cluster-local-gateway
+          app: cluster-local-gateway
+        k8s:
+          service:
+            type: ClusterIP
+            ports:
+            - port: 15020
+              name: status-port
+            - port: 80
+              targetPort: 8080
+              name: http2
+            - port: 443
+              targetPort: 8443
+              name: https
+      - name: istio-ingressgateway
+        enabled: true
+      - name: istio-ingressgateway2
+        enabled: true
+        label:
+          istio: ingressgateway2
+          app: ingressgateway2
+        k8s:
+          service:
+            type: LoadBalancer
+            ports:
+            - port: 15022
+              name: status-port
+            - port: 80
+              targetPort: 8080
+              name: http2
+            - port: 443
+              targetPort: 8443
+              name: https
+  

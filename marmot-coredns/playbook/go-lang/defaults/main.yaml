@@ -1,0 +1,5 @@
+work_dir :      /tmp
+download_dir :  "{{ work_dir }}"
+GO_VER:         1.18.2
+docker_version_local : "{{ docker_version }}"
+cluster_admin:  ubuntu

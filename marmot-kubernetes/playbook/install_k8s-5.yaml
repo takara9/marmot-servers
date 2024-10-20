@@ -1,0 +1,63 @@
+#
+# ワーカーノードのセットアップ
+#
+- name: Configure worker nodes
+  hosts:
+  - nodes
+  - storages
+  vars:
+    - download_node: bootnode
+  gather_facts: yes
+  become: yes
+  roles:
+    # ネットワークを設定 Calicoはの場合は別途導入
+    #- role: net_bridge
+    #  when: pod_network == "bridge"
+    #- role: net_flannel
+    #  when: pod_network == "flannel"
+  
+    # コンテナランタイムを選択してインストール
+    - role: runtime_containerd
+      when: container_runtime == "containerd"
+    - role: runtime_docker
+      when: container_runtime == "docker"
+    - role: runtime_cri-o
+      when: container_runtime == "cri-o"
+
+    # kubeletとkube-proxyの導入
+    #- node_worker
+    - node_worker2
+
+#
+# ノードへロール設定、ノードラベル設定
+# マスターノードへのtaint設定
+#
+- name: Configure cluster
+  hosts:
+  - bootnode
+  gather_facts: yes
+  become: yes
+  tasks:
+    - include_tasks: tasks/kubeconfig_setup_root.yml
+    # ノードのリスト読み込み
+    #- include_vars:
+    #    dir: vars
+    #  flannel使用時にマスターノードへのtaint設定
+    #- include_tasks: tasks/role_master.yaml
+    #  when:
+    #  - pod_network == "flannel" or pod_network == "calico"
+    # 残骸ではなく、Waitがないと、次のコマンドが失敗する
+    - wait_for:
+        timeout: 20
+    # ワーカーノードにロール設定
+    - include_tasks: tasks/role_worker.yaml
+    # ストレージノードにロール設定
+    #- include_tasks: tasks/role_storage.yaml
+    #  when:
+    #  - storage_node == True
+  roles:
+    # Calicoマニフェストデプロイ
+    #- role: net_calico
+    #  when: pod_network == "calico"
+
+

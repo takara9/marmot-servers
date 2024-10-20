@@ -1,0 +1,27 @@
+#
+#
+#  ワーカーノードのセットアップ
+#
+#
+
+## ワーカーノードのディレクトリ作成
+- name: setup directory for worker node
+  include_tasks: create_dir_worker.yaml
+
+## kube-proxy インストール
+- name: Install kube-proxy
+  include_tasks: kube-proxy.yaml
+
+## kubelet インストール
+- name: Install kubelet
+  include_tasks: kubelet.yaml
+
+## 
+## enable a remote ssh
+##  これはVagrantの時のみ必要
+- name: sshkey for root
+  include_tasks: setup_sshkey.yaml
+  when: ansible_facts.virtualization_type == "virtualbox"
+
+
+

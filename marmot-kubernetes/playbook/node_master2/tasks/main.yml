@@ -1,0 +1,45 @@
+#
+#
+#
+- name: kubeadm init
+  shell: |
+     kubeadm init --pod-network-cidr=10.244.0.0/16
+  args:
+    chdir: "{{ work_dir }}"
+  register: kubeadm_shell_output
+
+- debug: msg="{{ kubeadm_shell_output.stdout_lines}}"
+- debug: msg="{{ kubeadm_shell_output.stdout_lines[-2]}}"
+- debug: msg="{{ kubeadm_shell_output.stdout_lines[-1]}}"
+
+- name: get config
+  include_tasks: kubeconfig_setup.yml
+
+- template:
+    src: custom-resources.yaml
+    dest: "{{ work_dir }}/yaml/custom-resources.yaml"
+    owner: root
+    group: root
+    mode: '0644'
+
+- template:
+    src: tigera-operator.yaml
+    dest: "{{ work_dir }}/yaml/tigera-operator.yaml"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Delete kubeadm_join.sh
+  file:
+    path: "{{ work_dir }}/bin/kubeadm_join_{{ cluster_name }}.sh"
+    state: absent
+
+- template:
+    src: join.sh.j2
+    dest: "{{ work_dir }}/bin/kubeadm_join_{{ cluster_name }}.sh"
+    owner: root
+    group: root
+    mode: '0755'
+
+
+

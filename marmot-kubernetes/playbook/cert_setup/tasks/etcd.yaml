@@ -1,0 +1,116 @@
+#
+# ETCD認証局
+#
+
+- name: Create ETCD CA working directory
+  file:
+    path: "{{ ca_etcd_home }}"
+    state: directory
+    owner: root
+    group: root
+
+#
+# ETCD CAの作成
+#
+- name: Create Etcd CA
+  template:  
+    src: etcd-ca-config.json
+    dest: "{{ ca_etcd_home }}"
+    owner: root
+    group: root
+    mode: '0644'
+- template:
+    src: etcd-ca-csr.json
+    dest: "{{ ca_etcd_home }}"
+    owner: root
+    group: root
+    mode: '0644'
+- name: check existing etcd-ca.pem
+  stat:
+    path: "{{ ca_etcd_home }}/etcd-ca.pem"
+  register: file_etcd_ca
+- shell: |
+    cfssl gencert -initca etcd-ca-csr.json | cfssljson -bare etcd-ca
+  args:
+    chdir: "{{ ca_etcd_home }}"
+  when: file_etcd_ca.stat.exists == False
+
+#
+# ETCD サーバー証明書
+#
+- name: ETCD Server Certificate
+  template:
+    src: etcd-csr.json
+    dest: "{{ ca_etcd_home }}"
+    owner: root
+    group: root
+    mode: '0644'
+- name: check existing etcd-server.pem
+  stat:
+    path: "{{ ca_etcd_home }}/etcd-server.pem"
+  register: file_etcd_server
+- shell: |
+    cfssl gencert \
+      -ca=etcd-ca.pem \
+      -ca-key=etcd-ca-key.pem \
+      -config=etcd-ca-config.json \
+      -hostname={{ host_list_etcd }} \
+      -profile=kubernetes \      
+    etcd-csr.json | cfssljson -bare etcd-server
+  args:
+    chdir: "{{ ca_etcd_home }}"
+  #when: file_etcd_server.stat.exists == False
+  
+#
+# ETCD ピア証明書
+#
+- name: ETCD Peer Certificate
+  template:
+    src: etcd-peer-csr.json
+    dest: "{{ ca_etcd_home }}"
+    owner: root
+    group: root
+    mode: '0644'
+- name: check existing etcd-peer.pem
+  stat:
+    path: "{{ ca_etcd_home }}/etcd-peer.pem"
+  register: file_etcd_peer
+- shell: |
+    cfssl gencert \
+      -ca=etcd-ca.pem \
+      -ca-key=etcd-ca-key.pem \
+      -config=etcd-ca-config.json \
+      -hostname={{ host_list_etcd }} \      
+      -profile=kubernetes \
+    etcd-peer-csr.json | cfssljson -bare etcd-peer
+  args:
+    chdir: "{{ ca_etcd_home }}"
+  #when: file_etcd_peer.stat.exists == False
+
+
+- name: chmod 0644 etcd-ca-key.pem
+  file:
+    path: "{{ ca_etcd_home }}/etcd-ca-key.pem"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: chmod 0644 etcd-peer-key.pem
+  file:
+    path: "{{ ca_etcd_home }}/etcd-peer-key.pem"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: chmod 0644 etcd-server-key.pem
+  file:
+    path: "{{ ca_etcd_home }}/etcd-server-key.pem"
+    owner: root
+    group: root
+    mode: '0644'
+
+
+
+
+
+

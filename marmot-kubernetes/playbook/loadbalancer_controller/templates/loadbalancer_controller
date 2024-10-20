@@ -1,0 +1,375 @@
+#!/usr/bin/env python3
+# -*- coding:utf-8 -*-
+
+#
+#  Service type LoadBalancer を監視して、
+#  ロードラバンサーのVIPをアサインする
+#
+
+import yaml,json
+import signal, os, sys, re
+import shutil
+from kubernetes import client, config
+from kubernetes.client.rest import ApiException
+from time import sleep
+import datetime
+import time
+import daemon
+import argparse
+import copy
+
+## 初期パラメータ
+
+# ロードバランサー
+# KeepAlived
+global lb_vip_start  #= "192.168.1.100"
+global lb_vip_range  #= 10
+global lb_vip_default
+global lb_vips       #= {}
+global lb_vipx       #= {}  # 変化検出用
+global nw_dev        #= "enp3s0"
+
+keepalived_conf = '/etc/keepalived/keepalived.conf'
+ka_lines = []
+
+# HA-PROXY
+haproxy_conf = '/etc/haproxy/haproxy.cfg'
+kp_lines = []
+
+# CoreDNS
+global coredbs_db     #= '/coredns/k8s01.labs.db'
+global lb_dns         # KnativeのDNS名
+global lb_dns_prev    # KnativeのDNS名 前回スキャン時
+lb_dns      = {}
+lb_dns_prev = {}
+
+# Node
+nodes = []
+
+
+##
+## CoreDNS external の設定ファイルの変更
+def configure_coredns(lb_vips):
+    global dns_serial_no
+
+    with open(coredbs_db+".backup") as f:
+        dns_lines = f.readlines()
+
+    with open(coredbs_db, mode='w') as f:
+        for i in range(0,len(dns_lines)):
+            if re.search('serial',dns_lines[i]):
+                if dns_serial_no == 0:
+                    m = re.search("[1-9]+",dns_lines[i])
+                    dns_serial_no = int(m.group(0))
+                else:
+                    dns_serial_no = dns_serial_no + 1
+                print("                                %s         ; serial" % dns_serial_no,file=f)
+                continue
+
+            if re.match('^;0123456789+', dns_lines[i]):
+                print(dns_lines[i], end="",file=f)
+                break
+            else:
+                print(dns_lines[i], end="",file=f)
+
+        for i in lb_vips:
+            if lb_vips[i] != None:
+                if lb_vips[i] == True:
+                    continue
+                for j in lb_vips[i]:
+                    print("%s.%s  3600  IN A %s" % (j['name'], j['namespace'], j['lb_vip']),file=f)
+                    break
+
+        # Knative のエンドポイントが追加された時の処理
+        for k in lb_dns:
+            print("%s  3600  IN CNAME %s" % (k, "istio-ingressgateway.istio-system"),file=f)
+
+        print("",file=f)
+
+##
+## HA-Proxyの設定ファイル変更
+##
+def configure_haproxy(lb_vips):
+
+    with open(haproxy_conf+".backup") as f:
+        kp_lines = f.readlines()
+
+    with open(haproxy_conf, mode='w') as f:
+        for i in range(0,len(kp_lines)):
+            if re.match('^#0123456789+', kp_lines[i]):
+                print(kp_lines[i], end="",file=f)
+                break
+            else:
+                print(kp_lines[i], end="",file=f)
+
+        for i in lb_vips:
+            if lb_vips[i] != None:
+                if lb_vips[i] == True:
+                    continue
+
+                for j in lb_vips[i]:
+                    name_port = j['name_port']
+                    if j['name_port'] == None:
+                        name_port = str(j['port'])
+                    print("",file=f)
+                    print("frontend %s_%s_%s" % (j['namespace'], j['name'], name_port),file=f)
+                    print("  bind %s:%s" % (j['lb_vip'], j['port']),file=f)
+                    print("  mode tcp",file=f)
+                    print("  option tcplog",file=f)
+                    print("  default_backend be_%s_%s_%s" % (j['namespace'], j['name'], name_port),file=f)
+                    print("",file=f)
+                    print("",file=f)
+                    print("backend be_%s_%s_%s" % (j['namespace'], j['name'], name_port),file=f)
+                    print("  mode tcp",file=f)
+                    print("  balance roundrobin",file=f)
+                    print("  option forwardfor",file=f)
+                    print("  cookie %s insert" % (j['namespace']+"_"+j['name']).upper(),file=f)
+                    for k in nodes:
+                        print("  server %s %s:%s cookie %s check" %(k['name'],k['ip'],j['node_port'],k['name']),file=f)
+                    print("",file=f)
+                    print("",file=f)
+            print("",file=f)
+
+##
+## Keepalived の設定ファイルの変更
+##
+def configure_keepalived(lb_vips):
+    # Keepalived設定ファイルの読み取り
+    i = 0
+    ka_lines = []
+    with open(keepalived_conf) as f:
+        ka_lines = f.readlines()
+
+    # 対象箇所の抜き出し
+    virtual_ipaddress = None
+    virtual_ipaddress_start_line = None
+    virtual_ipaddress_end_line = None
+    for i in range(0,len(ka_lines)):
+        if re.match('\s+virtual_ipaddress', ka_lines[i]):
+            virtual_ipaddress = True
+            virtual_ipaddress_start_line = i + 1
+        elif virtual_ipaddress == True and re.match('\s+}', ka_lines[i]):
+            virtual_ipaddress = False
+            virtual_ipaddress_end_line = i
+    del ka_lines[virtual_ipaddress_start_line:virtual_ipaddress_end_line]
+
+    # Keepalived の設定ファイル書き出し
+    with open(keepalived_conf, mode='w') as f:
+
+        for i in range(0,len(ka_lines)):
+            if virtual_ipaddress_start_line == i:
+                if lb_vip_default != None:
+                    f.write("        " + lb_vip_default + " dev " + nw_dev + "\n")
+
+                for j in lb_vips:
+                    if lb_vips[j] != None:
+                        line = "        " + intIP_to_strIP(j) + " dev " + nw_dev
+                        f.write(line + '\n')
+
+                f.write("    }\n")
+            else:
+                f.write(ka_lines[i])
+
+
+## VIP管理テーブルの初期化
+def init_lb_vips():
+    st_ip = strIP_to_intIP(lb_vip_start)
+    ed_ip = st_ip + lb_vip_range
+    for i in range(st_ip, ed_ip, 1):
+        if i in lb_vips:
+            lb_vipx[i] = lb_vips[i]
+        else:
+            lb_vipx[i] = None
+        lb_vips[i] = None
+
+## VIPの追加、削除を検知
+def find_lb_vips_ope():
+    st_ip = strIP_to_intIP(lb_vip_start)
+    ed_ip = st_ip + lb_vip_range
+    for i in range(st_ip, ed_ip, 1):
+        if lb_vips[i] != lb_vipx[i]:
+            return True
+    return False
+
+## VIPの取得
+def get_VIP():
+    for i in lb_vips:
+        if lb_vips[i] == None:
+            lb_vips[i] = True
+            return intIP_to_strIP(i)
+    return None
+
+## 文字列IPアドレスをintへ変換
+def strIP_to_intIP(ip1):
+    x = ip1.split(".")
+    return (int(x[0]) *256**3 + int(x[1]) *256**2 + int(x[2]) *256 + int(x[3]))
+
+## intのIPアドレスをドット文字列へ変換
+def intIP_to_strIP(nip):
+    xm1 = nip % 256**3
+    rm1 = nip - xm1
+    x1  = int(rm1/256**3)
+    xm2 = xm1 % 256**2
+    rm2 = xm1 - xm2
+    x2  = int(rm2/256**2)
+    x4  = xm2 % 256
+    rm3 = xm2 - x4
+    x3  = int(rm3/256)
+    return str(x1) + "." + str(x2) + "." + str(x3) + "." + str(x4)
+
+
+## ノードの状態取得
+def node_mon(v1):
+    nodes.clear()
+    try:
+        ret = v1.list_node(watch=False)
+        for i in ret.items:
+            if 'role' in i.metadata.labels.keys():
+                if i.metadata.labels['role'] == 'worker-node':
+                    nodes.append({ 'name': i.metadata.name, 'ip': str(i.status.addresses[0].address) })
+
+    except ApiException as e:
+        print("Exception when calling CoreV1Api->list_node: %s\n" % e)
+
+
+
+## 停止要求シグナル処理
+def handler(signum, frame):
+    sys.exit(0)
+
+## LB監視
+def lb_mon(v1):
+
+    init_lb_vips() # VIP テーブルをローテーション
+
+    # Knative用DNSテーブルのバックアップと削除
+    lb_dns_prev = copy.copy(lb_dns)
+    lb_dns.clear()
+
+    # APIサーバーから現状を取得
+    ret = v1.list_service_for_all_namespaces(watch=False)
+
+    # VIP範囲で状況収集
+    for i in ret.items:
+        if ( i.spec.type == "LoadBalancer" ):
+            if i.status.load_balancer.ingress != None:
+                nip = strIP_to_intIP(i.status.load_balancer.ingress[0].ip)
+                y = []
+                for j in i.spec.ports:
+                    x = { 'namespace': i.metadata.namespace, \
+                          'name': i.metadata.name, \
+                          'lb_vip': i.status.load_balancer.ingress[0].ip, \
+                          'name_port': j.name, \
+                          'node_port': j.node_port, \
+                          'port': j.port, \
+                          'target_port': j.target_port }
+                    y.append(x)
+                lb_vips[nip] = y
+                #print("lb_vips[nip] = ",lb_vips[nip])
+        else:
+            # Knativeが作るService type=ExternalName を判別して、
+            # 最新のリストを、サービス名と名前空間のキーで辞書型変数にセットする
+            if ( i.spec.type == "ExternalName" ):
+                # Knative で作成されたキーであること
+                if ('serving.knative.dev/creator' in i.metadata.annotations.keys()):
+                    dns_key = i.metadata.name + "." + i.metadata.namespace
+                    lb_dns[dns_key] = {
+                        'namespace': i.metadata.namespace, \
+                        'name': i.metadata.name, \
+                        'annotations': i.metadata.annotations.keys()
+                    }
+
+
+    # ロードバランサー VIPのアサインとステータスの変更
+    for i in ret.items:
+        if ( i.spec.type == "LoadBalancer" ):
+            if i.status.load_balancer.ingress == None:
+                api_status = v1.read_namespaced_service(namespace=i.metadata.namespace, name=i.metadata.name)
+                new_ip = get_VIP()
+                api_status.status.load_balancer.ingress = [{'hostname': None, 'ip': new_ip }]
+                try:
+                    api_response = v1.replace_namespaced_service_status(i.metadata.name, i.metadata.namespace, api_status)
+                    #print("ret = ", api_response.status)
+                except ApiException as e:
+                    print("Exception when calling AppsV1Api->replace_namespaced_controller_revision: %s\n" % e)
+
+
+    # 変化があった時だけ、HA-PROXY, KEEPALIVED, COREDNSの設定を実行
+    if find_lb_vips_ope() == True:
+        #print("Configure ha-proxy & Keepalived")
+        # HA-Proxyの設定変更
+        configure_haproxy(lb_vips)
+        os.system("systemctl reload haproxy")
+        os.system("systemctl restart haproxy")
+
+        # KeepAlivedの設定変更
+        configure_keepalived(lb_vips)
+        os.system("systemctl reload keepalived")
+
+        # CoreDNS
+        configure_coredns(lb_vips)
+        os.system("systemctl restart coredns")
+    # KnativeのDNSが追加された時の処理
+    elif (lb_dns != lb_dns_prev):
+        # CoreDNS
+        configure_coredns(lb_vips)
+        os.system("systemctl restart coredns")
+
+
+
+def main_program(api_instance):
+    # 制御ループ
+    while True:
+        node_mon(api_instance)
+        lb_mon(api_instance)
+        sleep(5)  # 監視の間隔時間
+
+#
+# メイン処理
+#
+if __name__ == '__main__':
+
+    # 起動パラメータの受け取り
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--daemon', help='Switch of the daemonize (yes)')
+    parser.add_argument('--default-vip', help='Default Virtual IP address, ex: --default-vip=192.168.1.201')
+    parser.add_argument('--lb-start-vip', help='IP address for auto asigne when type Loadbalancer appeared, ex: --lb-start-vip=192.168.1.100')
+    parser.add_argument('--lb-range-vip', help='Maximum number of VIP, ex: --lb-range-vip=10')
+    parser.add_argument('--network-device', help='Network device name for VIP, ex: --network-device=enp3s0')
+    parser.add_argument('--k8s-cluster-domain', help='Doamin name of K8s cluster, ex: --k8s-cluster-domain=k8s1.labs.local')
+    parser.add_argument('--k8s-conf', help='kubeconf file, ex: --k8s-conf=/etc/loadbalancer_controller/config')
+    args = parser.parse_args()
+
+    # グローバル変数の初期化
+    lb_vip_start = args.lb_start_vip
+    lb_vip_range = int(args.lb_range_vip)
+    lb_vip_default = args.default_vip
+    nw_dev = args.network_device
+    k8s_domain = args.k8s_cluster_domain
+    k8s_config = args.k8s_conf
+    lb_vips = {}
+    lb_vipx = {}
+    dns_serial_no = 0
+    coredbs_db = '/coredns/' + args.k8s_cluster_domain + ".db"
+    #print(args)
+
+    ## 設定ファイルのバックアップ
+    shutil.copy2(haproxy_conf, haproxy_conf + ".backup")
+    shutil.copy2(keepalived_conf, keepalived_conf + ".backup")
+    shutil.copy2(coredbs_db, coredbs_db + ".backup")
+
+
+    signal.signal(signal.SIGTERM, handler) # シグナル処理
+    #config.load_incluster_config()        # 認証情報の取得
+    config.load_kube_config( k8s_config)   # kubectlの.kubeを読む
+    api_instance = client.CoreV1Api()      # インスタンス化
+
+    if args.daemon == "yes":
+        with daemon.DaemonContext():
+            main_program(api_instance)
+    else:
+        while True:
+            node_mon(api_instance)
+            lb_mon(api_instance)
+            sleep(5)                      # 監視の間隔時間
+

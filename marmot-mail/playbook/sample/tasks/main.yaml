@@ -1,0 +1,13 @@
+#
+# 自動設定のタスクを記述する。
+#
+
+- debug: msg="{{ ansible_facts.hostname }}"
+
+- name: copy templatefile 
+  template:
+    src:  samplefile.j2
+    dest: /home/ubuntu/sample_template_file
+    owner: ubuntu
+    group: ubuntu
+    mode:  '0644'

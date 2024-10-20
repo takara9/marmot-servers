@@ -1,0 +1,53 @@
+- name: basic information
+  hosts: all
+  gather_facts: true
+  become: true
+  #
+  vars:
+    my_host: coredns
+    # メール・ドメイン
+    mail_domain: "labo.local"
+    # サーバー・ドメイン
+    my_domain: "{{ my_host }}.labs.local"
+    fqdn:      "ca.labo.local"
+    my_ipaddr: "{{ ansible_facts.enp0s9.ipv4.address }}"
+    ca_ip:     "127.0.0.1"
+    # my_dns_data: /coredns
+    # disk_dns: "{{ my_dns_data }}"
+    fs_dns: /coredns
+    # my_ca_data: /ca
+    # disk_ca:  "{{ my_ca_data }}"
+    fs_ca: /ca
+    coredns_ver: 1.7.0
+    # my_ldap_data: /ldap
+    # disk_ldap: "{{ my_ldap_data }}"
+    fs_ldap: /ldap
+    # my_dex_data: /dex
+    # disk_dex: "{{ my_dex_data }}"
+    fs_dex: /dex
+    fs_sso: /sso
+    admin_user: ubuntu
+    docker_version: 5:19.03.12~3-0~ubuntu-focal
+    disk1: /dev/vdb
+    disk2: /dev/vdc
+    disk3: /dev/vdd
+    disk4: /dev/vde
+    disk5: /dev/vdf
+
+  #
+  roles:
+    - linux-setup
+    - vdisks
+    - coredns
+    - ca
+    - nginx
+    - ldap2
+    - docker
+    - mail-client
+    - go-lang
+    - lam
+    - dex
+    - ca-download
+    #- vault
+
+

@@ -1,0 +1,70 @@
+#!/usr/bin/ruby
+# coding: utf-8
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+require 'mb_string'
+require 'yaml'
+require 'json'
+require 'etc'
+require 'fileutils'
+require 'etcdv3'
+require_relative 'libruby/read_yaml.rb'
+require_relative 'libruby/util_defs.rb'
+require_relative 'libruby/vm-apply-ansible.rb'
+require_relative 'libruby/lib_scheduler.rb'
+
+$config_yaml = nil    # コンフィグファイル名
+
+
+##
+## メイン処理
+##
+if __FILE__ == $0
+  printf("\n")
+  printf("**********************************\n")
+  printf("*\n")
+  printf("*   Ansible playbookの適用開始\n")
+  printf("*\n")
+  printf("**********************************\n")
+  
+  ## コマンド引数の取得
+  arg_state = nil
+  ARGV.each_with_index do |arg, i|
+    if arg_state == nil
+      arg_state = arg
+    else
+      if arg_state == "-f"
+        $config_yaml = arg
+      end
+      arg_state = nil
+    end
+  end
+
+  ## Vagarntの仮想サーバースペックを作成
+  ## 及び、メモリ編集に取り込み
+  printf("ファイル名: %s\n",$config_yaml)
+  step_start2("コンフィグファイルの読み取り")
+  vm_config = read_yaml_config($config_yaml)
+  step_end( vm_config.length > 0 ? 0 : 1 )
+  printf("\n")
+
+  ##
+  ## コンフィグに従って仮想マシンを起動
+  ##
+  $vm_config_array.each do |val|
+    node = eval(val)
+    if node['playbook'].nil? == false
+      setup_vm(node)
+    end
+  end # END OF NODE
+
+
+  printf("**********************************\n")
+  printf("*\n")
+  printf("*   Ansible playbookの適用終了\n")  
+  printf("*\n")
+  printf("**********************************\n")
+  
+end # END OF MAIN   
+  

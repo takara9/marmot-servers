@@ -1,0 +1,90 @@
+- name: Create CA dir in homedir
+  file:
+    path:  /etc/pki/CA
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Copy CA info to homedir
+  copy:
+    src:  "/home/{{ admin_user }}/CA/certificate_authority_certificate.pem"
+    dest: /etc/pki/CA/cacert.pem 
+    owner: root
+    group: root
+    mode: '0444'
+
+#
+# HVノード証明書の配布
+#
+- name: Create dir libvirt's certs
+  file:
+    path:  /etc/pki/libvirt
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create dir libvirt's certs private
+  file:
+    path:  /etc/pki/libvirt/private
+    state: directory
+    owner: root
+    group: libvirt-qemu
+    mode: '0750'
+
+- name: Copy hv-node cert to /etc/pki/libvirt foreach nodes
+  copy:
+    src:  "/home/{{ admin_user }}/CA/{{ ansible_facts.hostname }}-server-certificate.pem"
+    dest: /etc/pki/libvirt/servercert.pem
+    owner: "{{ admin_user }}"
+    group: libvirt-qemu
+    mode: '0444'
+
+
+
+- name: Copy hv-node key to /etc/pki/libvirt foreach nodes
+  copy:
+    src:  "/home/{{ admin_user }}/CA/{{ ansible_facts.hostname }}-server-key.pem"
+    dest: /etc/pki/libvirt/private/serverkey.pem
+    owner: "{{ admin_user }}"
+    group: libvirt-qemu
+    mode: '0440'
+
+#
+# HVクライアント証明書の配布
+#
+- name: Copy hv-node cert to /etc/pki/libvirt foreach nodes
+  copy:
+    src:  "/home/{{ admin_user }}/CA/{{ ansible_facts.hostname }}-client-certificate.pem"
+    dest: /etc/pki/libvirt/clientcert.pem
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    mode: '0444'
+
+- name: Copy hv-node key to /etc/pki/libvirt foreach nodes
+  copy:
+    src:  "/home/{{ admin_user }}/CA/{{ ansible_facts.hostname }}-client-key.pem"
+    dest: /etc/pki/libvirt/private/clientkey.pem
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    mode: '0400'
+
+#
+# TLSモードでのlibvirtd再起動
+#
+- name: Stop libvirtd
+  systemd:
+    name: libvirtd
+    state: stopped
+    daemon_reload: no
+    enabled: no
+
+- name: Start libvirtd-tls.socket
+  systemd:
+    name: libvirtd-tls.socket
+    state: started
+    daemon_reload: yes
+    enabled: yes
+
+

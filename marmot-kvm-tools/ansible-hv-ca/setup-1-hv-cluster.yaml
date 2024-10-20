@@ -1,0 +1,137 @@
+#
+#  
+#
+#
+#
+#
+
+- name: Setup as hypervisor node
+  gather_facts: yes
+  vars:
+    #admin_user: tkr
+  hosts: all
+  become: yes
+
+  tasks:
+  - name: Install sw package for QEMU/KVM
+    apt:
+      name: "{{ packages }}"
+      state: present
+    vars:
+      packages:    
+        - gnutls-bin
+    delegate_to: localhost
+
+  - name: Create CA dir on homedir
+    file:
+      path: "/home/{{ admin_user }}/CA"
+      state: directory
+      owner: "{{ admin_user }}"
+      group: "{{ admin_user }}"
+      mode: '0700'
+    delegate_to: localhost
+    
+  #
+  # ハイパーバイザーのCA局の作成
+  #
+  - name: Check existing certificate_authority_certificate.pem
+    stat:
+       path: "/home/{{ admin_user }}/CA/certificate_authority_certificate.pem"
+    register: ca_cert
+    delegate_to: localhost
+
+  - name: Copy CA info to homedir
+    template:
+      src:  certificate_authority.info
+      dest: "/home/{{ admin_user }}/CA/certificate_authority.info"
+      owner: "{{ admin_user }}"
+      group: "{{ admin_user }}"
+      mode: '0600'
+    when: ca_cert.stat.exists == False
+    delegate_to: localhost
+
+  - name: Create CA key
+    shell: |
+       (umask 277 && certtool --generate-privkey > certificate_authority_key.pem)
+    args:
+      chdir: "/home/{{ admin_user }}/CA"
+    when: ca_cert.stat.exists == False      
+    delegate_to: localhost
+    
+  - name: Create CA cert
+    shell: |
+      certtool --generate-self-signed \
+         --template certificate_authority.info \
+         --load-privkey certificate_authority_key.pem \
+         --outfile certificate_authority_certificate.pem
+    args:
+      chdir: "/home/{{ admin_user }}/CA"
+    when: ca_cert.stat.exists == False
+    delegate_to: localhost
+
+  #
+  # 証明書の表示
+  #
+  - shell: |
+      openssl x509 -text -fingerprint -noout -in certificate_authority_certificate.pem
+    register: cert_text
+    args:
+      chdir: "/home/{{ admin_user }}/CA"
+    delegate_to: localhost
+
+  - debug: msg="{{ cert_text.stdout_lines }}"
+    delegate_to: localhost
+
+  #
+  # ハイパーバイザーのノード証明書作成
+  #
+  - name: Issue hypervisor-node cert
+    include_tasks: _issue-cert-hv-nodes.yaml
+
+
+
+#
+# ハイパーバイザーノードへ証明書を配布
+#
+- name: Setup as hypervisor node
+  gather_facts: yes
+  vars:
+     #admin_user: tkr
+  hosts: hvs
+  become: yes
+  tasks:
+  - name: distribute cert and keys
+    include_tasks: _copy-certs-key-to-cluster.yaml
+
+
+#
+# ハイパーバイザー管理サーバーへ証明書を配布
+#
+- name: Setup as hypervisor node
+  gather_facts: yes
+  vars:
+     #admin_user: tkr
+  hosts: hmc
+  become: yes
+  tasks:
+  - name: Copy hv-node cert to /etc/pki/libvirt foreach nodes
+    copy:
+      src:  "/home/{{ admin_user }}/CA/{{ ansible_facts.hostname }}-client-certificate.pem"
+      dest: /etc/pki/libvirt/clientcert.pem
+      owner: "{{ admin_user }}"
+      group: "{{ admin_user }}"
+      mode: '0444'
+
+  - name: Copy hv-node key to /etc/pki/libvirt foreach nodes
+    copy:
+      src:  "/home/{{ admin_user }}/CA/{{ ansible_facts.hostname }}-client-key.pem"
+      dest: /etc/pki/libvirt/private/clientkey.pem
+      owner: "{{ admin_user }}"
+      group: "{{ admin_user }}"
+      mode: '0400'
+
+
+
+
+
+

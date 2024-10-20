@@ -1,0 +1,100 @@
+#!/usr/bin/ruby
+# coding: utf-8
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+#
+# ハイパーバイザーのクラスタの
+# 仮想マシンの割り当て状態をリストする。
+#
+
+require 'etcdv3'
+require "json"
+require 'yaml'
+require 'net/ping'
+$conn = nil
+$ping_check = nil
+require_relative 'libruby/lib_scheduler.rb'
+
+
+#
+# Pingチェック
+#
+def up?(host)
+    check = Net::Ping::External.new(host,1)
+    check.ping?
+end
+
+#
+# メイン
+#
+if __FILE__ == $0
+  arg_state = nil
+  ARGV.each_with_index do |arg, i|
+    if arg_state == nil
+      arg_state = arg
+      if arg_state == "-p"
+        $ping_check = true
+      end
+    end
+  end
+
+
+  etcd_connect()
+  begin
+    ##
+    ## ハイパーバイザーのリスト
+    ##
+    printf("\n=== ハイパーバイザーの資源残存量 ===\n")
+    printf("%-20s %-20s  %-10s  %-10s\n","HVノード名","IPアドレス","vCPU数", "RAM(MB)")
+    hv_list = $conn.get('hvr1', range_end: 'hvr99')
+    for hv in hv_list.kvs
+      hv = JSON.parse!(hv.value)
+      printf("%-20s  %-20s  %10d/%d  %10d/%d\n",hv['nodename'],hv['ip-addr'],hv['free-cpu'],hv['cpu'],hv['free-memory'], hv['memory'])
+    end
+
+    ##
+    ## 仮想サーバーのリスト
+    ##
+    printf("\n=== 仮想サーバーのリスト ===\n")
+    if $ping_check == true
+      printf("%-16s  %-7s %-4s %-8s %-20s %-16s %-16s %-5s\n","VM-Name","HV-Host", "vCPU", "RAM(MB)","DISK(GB)", "Pub-IP","Pri-IP","ALIVE")
+    else
+      printf("%-16s  %-7s %-4s %-8s %-20s %-16s %-16s\n","VM-Name","HV-Host", "vCPU", "RAM(MB)","DISK(GB)", "Pub-IP","Pri-IP")
+    end
+
+    vm_list = $conn.get('vm1', range_end: 'vm999', sort_order: 'ascend', sort_target: 'key')
+    for vm in vm_list.kvs
+      # VMリストをetcd から取り出し
+      vm = JSON.parse!(vm.value)
+
+      # ストレージの容量リストを生成
+      stg = []      
+      if vm['storage'].is_a?(Array)
+        for disk in vm['storage']
+          
+          if ! disk.is_a?(Numeric)
+            for disk in vm['storage']
+              stg.push(disk['size'])
+            end
+          else
+            stg = vm['storage']
+          end
+          break
+
+        end
+      end
+
+      if $ping_check == true
+        host_alive = up?(vm['private_ip']) == true ? "UP" : "DOWN"
+        printf("%-16s  %-7s %-4d %-8d %-20s %-16s %-16s %-5s\n",vm['vm_name'],vm['hv_node'],vm['cpu'],vm['memory'],stg,vm['public_ip'],vm['private_ip'],host_alive)
+      else
+        printf("%-16s  %-7s %-4d %-8d %-20s %-16s %-16s\n",vm['vm_name'],vm['hv_node'],vm['cpu'],vm['memory'],stg,vm['public_ip'],vm['private_ip'])
+      end
+    end
+  rescue SystemStackError
+    printf("\n*** ETCDとの通信エラー ***\n")
+  end
+
+  
+end # END OF MAIN   

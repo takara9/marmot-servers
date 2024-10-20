@@ -1,0 +1,15 @@
+{{ ext_domain }}.	3600 IN SOA ns1.{{ ext_domain }}. root.{{ ext_domain }}. (
+				16         ; serial
+				7200       ; refresh (4 hours)
+				3600       ; retry (1 hour)
+				604800     ; expire (1 week)
+				1800       ; minimum (30 min)
+				)
+
+; Infra Servers
+ns1             3600 IN  A     {{ front_proxy_vip_nomask }}   ; This server CoreDNS
+ingress         3600 IN  A     {{ lb_vip_start }}             ; Ingress Controller
+dashboard       3600 IN  A     {{ lb_vip_start }}             ; Ingress dashboard url
+;0123456789--------------------------------------------------------
+
+; K8s VIP of LoadBalancer

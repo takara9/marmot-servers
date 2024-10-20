@@ -1,0 +1,116 @@
+#
+# Kubernetesクラスタ構成ファイル KVM
+#
+
+## Hypervisor type
+##  kvm : QEMU+KVM + virsh
+##  vv  : VirtualBox + Vagrant
+hypervisor: kvm
+
+### Container Runtime
+#container_runtime:  containerd
+containerd_version: "1.2.13"
+runc_version:       "v1.0.0-rc8"
+crictl_version:     "v1.15.0"
+
+container_runtime:  docker
+docker_version:     "5:18.09.9~3-0~ubuntu-bionic"
+
+#container_runtime:  cri-o
+crio_version:       "1.17"
+
+### K8s cluster/pod network CNI plugin
+cni_plugins:        "v0.8.2"
+
+#pod_network: bridge
+pod_network: flannel
+flannel_version: v0.12.0
+
+#pod_network: calico
+calico_version:  v3.14.1
+
+### etcd version
+etcd_version:    v3.4.0
+
+### Kubernetes version
+kubernetes_version: 1.18.14
+kubernetes_custom: False
+kubernetes_dashborad_ver: v2.0.0
+
+
+### Cluster Network
+private_ip_subnet: 172.16.0.0/16
+public_ip_subnet:  10.0.0.0/8
+
+### Network device and config
+net_dev_default: enp1s0
+net_dev_private: enp2s0
+net_dev_public:  enp3s0
+
+### ubuntu netplan param for elb1/elb2
+public_ip_gw: 10.0.0.1
+public_ip_dns: 192.168.1.241
+
+### Load Balancer config
+keepalived_version: 2.0.15
+
+### Internal Load Balancer
+kube_apiserver_vip: 172.16.1.21
+#ka_primary_internal_host: mlb1
+#ka_backup_internal_host: mlb2
+
+### Frontend Load Balancer
+front_proxy_vip: 10.0.1.21
+ka_primary_frontend_host: elb1
+ka_backup_frontend_host: elb2
+
+lb_vip_start: 10.0.1.40
+lb_vip_range: 20
+
+### extra addons
+sw_rook_ceph:    False
+sw_promethus:    False
+sw_grafana:      False
+sw_elk:          False
+sw_istio:        False
+sw_knative:      False
+sw_container_fs: True
+
+
+### DOMAIN
+cluster_name: k8s0
+domain: cluster.local
+ext_domain: k8s0.labo.local
+
+
+### Master, Worker, Internal/Frontend LB and bootnode
+vm_spec:
+  - name: bootnode
+    cpu: 4
+    memory: 8192
+    private_ip: 172.16.1.20
+    storage:
+    - 10
+    vm_host: auto
+    comment: "Bootstap node" 
+
+  - name: master1
+    cpu: 2
+    memory: 2048
+    private_ip: 172.16.1.21
+    public_ip:  10.0.1.21
+    storage:
+    - 16
+    role: master    
+    vm_host: nagato
+    comment: "Master node #1"
+    
+  - name: node1
+    cpu: 2
+    memory: 1024
+    private_ip: 172.16.1.22
+    storage:
+    - 16
+    role: worker
+    vm_host: nagato    
+    comment:  "Worker node #1"

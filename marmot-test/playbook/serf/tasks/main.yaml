@@ -1,0 +1,122 @@
+##
+## Download Serf
+##
+##
+## x86-64
+##
+- name: Check serf bin
+  stat:
+    path: "{{ download_dir }}/serf_{{ serf_version }}_linux_amd64.zip"
+  register: file_cerf_amd64
+- name: Download serf
+  get_url:
+    url: "https://releases.hashicorp.com/serf/{{ serf_version }}/serf_{{ serf_version }}_linux_amd64.zip"
+    dest: "{{ download_dir }}/serf_{{ serf_version }}_linux_amd64.zip"
+    mode: 0440
+  when: file_cerf_amd64.stat.exists == False and ansible_facts.architecture == "x86_64"
+
+- name: Unarchive a file that needs to be downloaded (added in 2.0)
+  ansible.builtin.unarchive:
+    src: "{{ download_dir }}/serf_{{ serf_version }}_linux_amd64.zip"
+    dest: /usr/local/bin
+    remote_src: yes
+  when: ansible_facts.architecture == "x86_64"
+
+##
+## arm
+##
+- name: Check serf bin
+  stat:
+    path: "{{ download_dir }}/serf_{{ serf_version }}_linux_arm.zip"
+  register: file_cerf_arm
+- name: Download serf
+  get_url:
+    url: "https://releases.hashicorp.com/serf/{{ serf_version }}/serf_{{ serf_version }}_linux_arm.zip"
+    dest: "{{ download_dir }}/serf_{{ serf_version }}_linux_arm.zip"
+    mode: 0440
+  when: file_cerf_arm.stat.exists == False and ansible_facts.architecture == "armv6l"
+- name: Unarchive a file that needs to be downloaded (added in 2.0)
+  ansible.builtin.unarchive:
+    src: "{{ download_dir }}/serf_{{ serf_version }}_linux_arm.zip"
+    dest: /usr/local/bin
+    remote_src: yes
+  when: ansible_facts.architecture == "armv6l"
+
+
+- name: mkdir /etc/serf
+  file:
+    path: "/etc/serf"
+    state: directory
+    owner: root
+    group: root
+    mode: '0775'
+
+
+- name: mkdir /etc/serf/handlers
+  file:
+    path:  /etc/serf/handlers
+    state: directory
+    owner: root
+    group: root
+    mode: '0775'
+
+- name: put handler script
+  template:
+    src:   member-failed
+    dest:  /etc/serf/handlers
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: put handler script
+  template:
+    src:   member-join
+    dest:  /etc/serf/handlers
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: put handler script
+  template:
+    src:   member-leave
+    dest:  /etc/serf/handlers
+    owner: root
+    group: root
+    mode: '0755'
+
+
+- name: mkdir event handler sir
+  template:
+    src: handler.sh
+    dest: /usr/local/bin
+    owner: root
+    group: root
+    mode: '0755'
+
+
+#
+# Setup service
+#
+- template:
+    src: serf.service
+    dest: /etc/systemd/system
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Start the Worker Services
+  systemd:
+    name: serf
+    state: started
+    daemon_reload: yes
+    enabled: yes
+
+
+#
+# Join cluster
+#
+- name: join cluster
+  shell: |
+    serf join {{ master_node }}
+  args:
+      chdir: /root

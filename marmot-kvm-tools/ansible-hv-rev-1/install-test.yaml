@@ -1,0 +1,11 @@
+- name: ハイパーバイザーノード＋コントロールノードのセットアップ
+  gather_facts: yes
+  vars:
+    admin_user: marmot
+  hosts:
+    - localhost
+  become: yes
+  roles:
+  tasks:
+    - debug: msg="{{ ansible_facts.default_ipv4 }}"
+

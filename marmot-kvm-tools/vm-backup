@@ -1,0 +1,78 @@
+#!/bin/bash
+#
+# 構成ファイルからK8sクラスタを起動するシェル
+#
+# 以下の構成ファイルは環境変数に設定する
+#
+
+# パラメータ
+while getopts f:s: flag
+do
+    case "${flag}" in
+        f) CONFIGFILE=${OPTARG};;
+        s) STOP_STAGE=${OPTARG};;
+    esac
+done
+
+if [ -z "$CONFIGFILE" ]; then
+    if [ -f .vm_running_config.dat ]; then
+	CONFIGFILE=$(cat .vm_running_config.dat)
+    fi
+    
+fi
+
+if [ -z "$CONFIGFILE" ]; then
+    if [ -f Qemukvm.yaml ]; then
+	    CONFIGFILE=Qemukvm.yaml
+    else
+	exit
+    fi
+fi
+
+# 開始時刻
+start_date=$(date +%s)
+echo "CONFIGFILE: $CONFIGFILE";
+
+
+# パラメータ設定
+cat $CONFIGFILE |grep 'name: bootnode'
+if  [ $? == "0" ]; then
+  start_line=$(cat $CONFIGFILE |grep 'name: bootnode' -n |sed 's/://g' | awk '{print $1}')
+  let end_line=$start_line+10
+  BOOTNODE_IP=$(cat $CONFIGFILE |awk "NR==$start_line,NR==$end_line {print}" |grep private_ip |awk '{print $2}' |sed 's/\"//g')
+  if [ -z "$BOOTNODE_IP" ]; then
+    BOOTNODE_IP=$(cat $CONFIGFILE |awk "NR==$start_line,NR==$end_line {print}" |grep public_ip |awk '{print $2}' |sed 's/\"//g')
+  fi
+  EXT_APISERVER_IP=$(cat $CONFIGFILE |grep "front_proxy_vip:" |sed 's/://g' | awk '{print $2}')
+  INT_APISERVER_IP=$(cat $CONFIGFILE |grep "kube_apiserver_vip:" |sed 's/://g' | awk '{print $2}')
+fi
+CLUSTER_NAME=$(cat $CONFIGFILE |grep "cluster_name:" |sed 's/://g' | awk '{print $2}')
+IMG_TEMP_PATH=$(cat $CONFIGFILE |grep "image_template_path:" |sed 's/://g' | awk '{print $2}')  IMG_DEFAULT_PATH=$(cat $CONFIGFILE |grep "image_default_path:" |sed 's/://g' | awk '{print $2}') 
+echo "CLUSTER_NAME :" $CLUSTER_NAME
+echo "IMG_TEMP_PATH" $IMG_TEMP_PATH
+echo "IMG_DEFAULT_PATH" $IMG_DEFAULT_PATH    
+
+hv_hosts=( `hv-hosts` )
+
+for hv_host in "${hv_hosts[@]}"; do
+    echo "hv_host:" ${hv_host}
+    echo "host: ${hv_host}"
+    ssh  ${hv_host} ls $IMG_DEFAULT_PATH|grep $CLUSTER_NAME |grep -v "backup$" >/tmp/x-${hv_host}.txt
+    while read line
+    do
+	echo "copy" 
+	echo "  src: $IMG_DEFAULT_PATH/$line"
+	echo "  dst: $IMG_TEMP_PATH/$line.backup"
+	ssh -n ${hv_host} file "$IMG_DEFAULT_PATH/$line"
+	ssh -n ${hv_host} cp "$IMG_DEFAULT_PATH/$line" "$IMG_TEMP_PATH/$line.backup" && echo " done"
+    done </tmp/x-${hv_host}.txt
+done
+
+
+
+
+# 開始時刻
+finsih_date=$(date +%s)
+let elapse_time=$finsih_date-$start_date
+echo "開始からの経過時刻 = " $elapse_time "秒"
+

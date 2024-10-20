@@ -1,0 +1,25 @@
+#
+# 追加パッケージ導入
+#
+- name: Install a list of packages
+  apt:
+    name: "{{ packages }}"
+    state: present
+  vars:
+    packages:
+    - curl
+
+#
+# CoreDNS 実行形式のファイルをインストール
+#
+- name: Downloading CoreDNS
+  stat:
+    path: /usr/local/bin/coredns
+  register: file_coredns_tgz
+
+- get_url:
+    url: "https://github.com/coredns/coredns/releases/download/v{{ coredns_ver }}/coredns_{{ coredns_ver }}_linux_amd64.tgz"
+    dest: "{{ download_dir }}"
+    mode: '0755'
+
+

@@ -1,0 +1,13 @@
+hypervisor_specs:
+  - nodename: "hv3"
+    cpu: 32
+    memory: 131072
+    ip-addr: 10.1.0.13/8
+    
+  - nodename: "hv4"
+    cpu: 32
+    memory: 131072
+    ip-addr: 10.1.0.14/8
+
+    
+    

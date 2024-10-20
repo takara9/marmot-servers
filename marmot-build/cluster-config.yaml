@@ -1,0 +1,21 @@
+#
+# 最小構成のServer
+#
+domain: labo.local
+os_variant:  ubuntu20.04
+
+cluster_name: test
+vm_spec:
+  - name: "server1"
+    cpu: 16
+    memory: 16383
+    private_ip: "172.16.99.101"
+    storage:
+    - name: data
+      size: 100
+      vg:   vg2
+    - name: docker
+      size: 100
+      vg:   vg2
+    playbook: setup.yaml
+    comment: "Build node #1"

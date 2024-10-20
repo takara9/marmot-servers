@@ -1,0 +1,8 @@
+country = JP
+state = Tokyo
+locality = Chuo-Ku
+organization = K8s Laboratory
+cn = "{{ item.host }}"
+tls_www_server
+encryption_key
+signing_key

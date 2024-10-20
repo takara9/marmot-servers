@@ -1,0 +1,28 @@
+#
+# 最小構成のServer
+#
+domain: labo.local
+os_variant:  ubuntu20.04
+
+cluster_name: infra
+vm_spec:
+  - name: "minio1"
+    cpu: 2
+    memory: 4096
+    public_ip:  "192.168.1.225"
+    private_ip: "172.16.0.225"
+    storage:
+    - name: disk1
+      size: 100
+      vg:   vg3
+    - name: disk2
+      size: 100
+      vg:   vg3
+    - name: disk3
+      size: 100
+      vg:   vg3
+    - name: disk4
+      size: 100
+      vg:   vg3
+    playbook: setup.yaml
+    comment: "MinIO Object Storage"

@@ -1,0 +1,14 @@
+#!/bin/bash
+EVENT_LOG=/tmp/event-leave.log
+
+if [ -f $EVENT_LOG ]; then
+   date >> $EVENT_LOG
+else
+   date >  $EVENT_LOG
+fi
+
+env >> $EVENT_LOG
+echo >> $EVENT_LOG
+echo "-------------------" >> $EVENT_LOG
+curl -X POST http://rp1.labo.local:8000/api/v1/on -H 'Content-Type: application/json'  -d '{"pin":"2"}'
+

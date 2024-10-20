@@ -1,0 +1,5 @@
+organization = K8s Laboratory
+cn = "{{ ansible_facts.hostname }}"
+tls_www_client
+encryption_key
+signing_key

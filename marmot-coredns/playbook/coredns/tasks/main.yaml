@@ -1,0 +1,67 @@
+- name: Install a list of packages
+  apt:
+    name: "{{ packages }}"
+    state: present
+  vars:
+    packages:
+    - curl
+
+- name: Downloading CoreDNS
+  stat:
+    path: /usr/local/bin/coredns
+  register: file_coredns_tgz
+
+- get_url:
+    url: "https://github.com/coredns/coredns/releases/download/v{{ coredns_ver }}/coredns_{{ coredns_ver }}_linux_amd64.tgz"
+    dest: /tmp
+    mode: '0444'
+  when: file_coredns_tgz.stat.exists == false
+
+- name: Install coredns
+  unarchive:
+    src: "/tmp/coredns_{{ coredns_ver }}_linux_amd64.tgz"
+    dest: /usr/local/bin
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+
+- name: copy coredns.sevice
+  template:
+    src: coredns.service.j2
+    dest: /etc/systemd/system/coredns.service
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: copy Corefile
+  template:
+    src: Corefile
+    dest: /coredns/Corefile
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: copy zone file labo.db
+  template:
+    src: labo.db
+    dest: /coredns/labo.db
+    owner: root
+    group: root
+    mode: '0644'
+
+# systemd-resolved を停止
+- systemd:
+    name: systemd-resolved
+    state: stopped
+    daemon_reload: no
+    enabled: no
+
+# 停止後、CoreDNSを起動
+- name: Start Coredns deamons
+  systemd:
+    name: coredns
+    state: started
+    daemon_reload: yes
+    enabled: yes
+

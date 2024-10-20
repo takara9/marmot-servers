@@ -1,0 +1,76 @@
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana-tkr
+  namespace: elasticsearch
+spec:
+  version: 8.4.1
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch-tkr
+  http:
+    service:
+      spec:
+        type: LoadBalancer
+  config:
+    xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-tkr-es-http.elk.svc:9200"]
+    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-tkr-agent-http.elk.svc:8220"]
+    xpack.fleet.packages:
+      - name: system
+        version: latest
+      - name: elastic_agent
+        version: latest
+      - name: fleet_server
+        version: latest
+      - name: kubernetes
+        version: latest
+      - name: log
+        version: latest  
+
+    xpack.fleet.agentPolicies:
+      - name: Fleet Server on ECK policy
+        id: eck-fleet-server
+        is_default_fleet_server: true
+        namespace: elasticsearch
+        monitoring_enabled:
+          - logs
+          - metrics
+        package_policies:
+        - name: fleet_server-1
+          id: fleet_server-1
+          package:
+            name: fleet_server
+      - name: Elastic Agent on ECK policy
+        id: eck-agent
+        namespace: elasticsearch
+        monitoring_enabled:
+          - logs
+          - metrics
+        unenroll_timeout: 900
+        is_default: true
+
+        package_policies:
+        - name: system-1
+          package:
+            name: system
+        - name: kubernetes-1
+          package:
+            name: kubernetes
+        - name: log
+          package:
+            name: log-1
+          inputs:
+          - type: logfile
+            enabled: true
+            streams:
+            - data_stream:
+                dataset: log.log
+              enabled: true
+              vars:
+              - name: paths
+                value:
+                - '/var/log/containers/*${kubernetes.container.id}.log'
+              - name: custom
+                value: |
+                  symlinks: true
+                  condition: ${kubernetes.namespace} == 'default'

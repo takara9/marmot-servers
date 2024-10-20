@@ -1,0 +1,34 @@
+#
+# 認証局、証明書、kubeconfig の設定
+#
+#  このタスクではNFSサーバー上に、証明書とkubeconfigを作成する、
+#  すなわち、各インスタンスに必要な材料を作るだけで、
+#  サーバーへの配布はしない。　マスターやノードの中のそれぞれの
+#  サーバーのセットアップタスクで、コピーして使用する。
+#
+- include_vars: ../../vars/main.yaml
+
+
+- include_tasks: dl_cfssl.yaml
+
+- debug: msg="mode={{ mode }}"
+  
+- name: Setup Kubernetes CA, Certificate
+  include_tasks: k8s-cert.yaml
+  when: mode == "new"
+  
+- name: Setup kubeconfig
+  include_tasks: k8s-kubeconfig.yaml
+  when: mode == "new"
+
+- name: Setup Etcd CA, Certification
+  include_tasks: etcd.yaml
+  when: mode == "new"
+
+- name: Setup FRONT-PROXY CA
+  include_tasks: front-proxy.yaml
+  when: mode == "new"
+
+- name: Setup kubelet by node
+  include_tasks: kubelet-by-node.yaml
+

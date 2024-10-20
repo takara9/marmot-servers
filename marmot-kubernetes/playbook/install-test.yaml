@@ -1,0 +1,45 @@
+#
+# masterクラスタのための内部LBの構築
+#
+#- name: Setup the internal LoadBalancer
+#  hosts:
+#  - mlb1
+#  - mlb2
+#  vars:
+#  - lb_pos: "Internal"
+#  gather_facts: yes
+#  become: yes
+#  roles:
+#    - haproxy
+#    - keepalived
+
+#
+# 外部リクエストをk8sクラスタ内へ導く外部LBを設定
+#
+#- name: Setup the external LoadBalancer
+#  hosts:
+#  - elb1
+#  - elb2
+#  vars:
+#  - lb_pos: "Frontend"
+#  gather_facts: yes
+#  become: yes
+#  roles:
+#    - haproxy
+#    - keepalived
+#    - coredns_external
+#    - loadbalancer_controller
+
+
+
+
+- name: Deploy addons
+  hosts: master1
+  gather_facts: yes
+  become: yes
+  roles:
+    #- addon_coredns
+    - addon_helm3
+    - addon_ingress
+    - addon_metrics-server
+    - addon_dashboard

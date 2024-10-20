@@ -1,0 +1,51 @@
+- name: Setup the guest OS
+  gather_facts: yes
+  vars:
+  hosts:
+    - localhost
+  become: yes
+  roles:
+  tasks:
+  
+  # 必要なパッケージのインストール
+  - name: Install sw package
+    apt:
+      name: "{{ packages }}"
+      state: present
+    vars:
+      packages:
+        - curl
+        - ruby
+        - ruby-bundler
+
+  # シリアルコンソールの設定
+  - name: setup serial consolegrub.config
+    copy:
+      src: grub
+      dest: /etc/default/grub
+      owner: root
+      group: root
+      mode: '0644'
+
+  # 設定を反映
+  - name: existing virsh net private
+    command: grub-mkconfig -o /boot/grub/grub.cfg
+
+  # 自動updateを禁止
+  - name: disable auto update
+    copy:
+      src: 20auto-upgrades
+      dest: /etc/apt/apt.conf.d/20auto-upgrades
+      owner: root
+      group: root
+      mode: '0644'
+
+  # スワップファイルの削除
+  - name: disable swap
+    shell: |
+      swapoff /swap.img
+      rm -f /swap.img
+    args:
+      chdir: /
+
+

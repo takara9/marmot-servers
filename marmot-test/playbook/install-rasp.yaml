@@ -1,0 +1,15 @@
+- name: install all
+  hosts: all
+  become: true
+  gather_facts: yes
+  vars:
+    ca_server: 192.168.1.8
+    public_ip_dns: 192.168.1.9
+    cluster_admin: ubuntu
+    sw_container_fs: True
+    prevent_download: False
+    download_dir: /tmp
+    serf_version: 0.8.2
+  #tasks:
+  roles:
+    - serf

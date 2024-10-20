@@ -1,0 +1,30 @@
+- name: install base
+  hosts: all
+  become: true
+  gather_facts: yes
+  vars:
+    public_ip_dns: 172.16.0.8
+    cluster_admin: ubuntu
+    shared_fs: /srv
+    sw_container_fs: False
+  tasks:
+    - debug: msg="{{ ansible_facts.hostname }}"	
+  roles:
+    - base_linux
+
+- name: install mail server
+  hosts: mail
+  become: true
+  gather_facts: yes
+  roles:
+    - mail-server
+
+#- name: install mail client
+#  hosts: tests
+#  become: true
+#  gather_facts: yes
+#  roles:
+#    - mail-client
+
+
+ 

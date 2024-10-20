@@ -1,0 +1,13 @@
+user_name        : vagrant
+
+#
+# see https://istio.io/latest/news/releases/
+#
+#istio_version    : 1.7.8
+#istio_version    : 1.8.4
+#istio_version    : 1.9.2
+istio_version    : 1.11.5
+
+ca_ip: "{{ public_ip_dns }}"
+
+

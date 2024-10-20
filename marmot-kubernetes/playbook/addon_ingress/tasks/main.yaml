@@ -1,0 +1,62 @@
+- debug: msg="{{ ansible_facts.hostname }}"
+
+
+- name: Exisiting check 
+  stat:
+    path: "{{ cadmin_home }}/ingress-controller-nginx.yaml"
+  register: file_ingress_controller_nginx
+
+
+- name: Download Nginx Ingress Controller Manifest
+  get_url:
+    url: "https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-{{ nginx_ic_version }}/deploy/static/provider/baremetal/deploy.yaml"
+    dest: "{{ cadmin_home }}/ingress-controller-nginx.yaml"
+    mode: '0644'
+    owner: "{{ cluster_admin }}"
+    group: "{{ cluster_admin }}"
+  when: file_ingress_controller_nginx.stat.exists == False
+
+
+- name: copy patch-file for ingress
+  template:
+    src:  patch-file.yaml
+    dest: "{{ cadmin_home }}/patch-file.yaml"
+    mode: '0644'
+    owner: "{{ cluster_admin }}"
+    group: "{{ cluster_admin }}"
+  
+
+- name: Deploy Ingress nginx
+  become_user: "{{ cluster_admin }}"
+  command: kubectl apply -f ingress-controller-nginx.yaml
+  args:
+    chdir: "{{ cadmin_home }}"
+
+
+- name: Deploy Ingress nginx
+  become_user: "{{ cluster_admin }}"
+  command: kubectl patch service ingress-nginx-controller -n ingress-nginx --type merge --patch-file patch-file.yaml
+  args:
+    chdir: "{{ cadmin_home }}"
+
+
+# Nginx Ingress
+# TLS証明書作成
+#
+- name: Download Web-Site SSL Certs #1
+  get_url:
+    url:  "https://{{ ca_ip }}/ingress.{{ ext_domain }}/ingress.{{ ext_domain }}.crt"
+    dest: "{{ cadmin_home }}/ingress.{{ ext_domain }}.crt"
+    validate_certs: no
+    mode: 0440
+- get_url:
+    url:  "https://{{ ca_ip }}/ingress.{{ ext_domain }}/ingress.{{ ext_domain }}.key"
+    dest: "{{ cadmin_home }}/ingress.{{ ext_domain }}.key"   
+    validate_certs: no
+    mode: 0440
+- name: kubectl create secret in istio-system
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl create -n ingress-nginx secret tls ingress-credential --key=ingress.{{ ext_domain }}.key --cert=ingress.{{ ext_domain }}.crt    
+  args:
+    chdir: "{{ cadmin_home }}"    

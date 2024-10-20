@@ -1,0 +1,25 @@
+#
+- name: create build directory
+  file:
+    path:  "/build/src/{{ k8s_release }}"
+    owner: "{{ cluster_admin }}"
+    group: "{{ cluster_admin }}"
+    mode: '0755'
+    state: directory
+
+
+- name: Git checkout
+  ansible.builtin.git:
+    repo: 'https://github.com/kubernetes/kubernetes'
+    dest: "/build/src/{{ k8s_release }}/kubernetes"
+    clone: true
+    version: "{{ k8s_release }}"
+ 
+
+- name: set systemd-resolved config
+  template:
+    src: build.sh
+    dest: "/build/src/{{ k8s_release }}"
+    owner: "{{ cluster_admin }}"
+    group: "{{ cluster_admin }}"
+    mode: '0755'

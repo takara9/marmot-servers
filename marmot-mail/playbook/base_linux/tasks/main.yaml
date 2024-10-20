@@ -1,0 +1,205 @@
+#
+# プライベートCA証明書の取得
+#
+- name: Download CA pem
+  get_url:
+    url: "https://{{ public_ip_dns }}/ca.pem"
+    dest: /etc/ssl/certs/labo_local_ca.pem
+    validate_certs: no
+    mode: 0440
+
+#
+# Ubuntu の 自動アップデートを禁止する
+#
+- name: Disable auto update packages
+  replace:
+    path: /etc/apt/apt.conf.d/20auto-upgrades
+    regexp: 'APT::Periodic::Update-Package-Lists "1";'
+    replace: 'APT::Periodic::Update-Package-Lists "0";'
+    backup: no
+
+#
+# DNSの設定を変更
+#
+- name: set systemd-resolved config
+  template:
+    src: resolved.conf.j2
+    dest: /etc/systemd/resolved.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+#
+# シンボリックリング /etc/resolv.conf を変更
+#
+- name: change symbolic link for /etc/resolv.conf
+  shell: |
+    ln -sf ../run/systemd/resolve/resolv.conf resolv.conf
+  args:
+    chdir: /etc
+
+#
+# リスタート　systemctl restart systemd-resolved
+#
+- systemd:
+    name: systemd-resolved
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
+
+
+#
+# スワップ領域の無効化
+#
+- name: Disable SWAP since kubernetes can't work with swap enabled (1/2)
+  command: swapoff -a
+
+- name: Disable SWAP in fstab since kubernetes can't work with swap enabled (2/2)
+  replace:
+    path: /etc/fstab
+    regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+    replace: '# \1'
+
+- name: Ansible delete swap file glob
+  find:
+    paths: /
+    patterns: "swap.img"
+  register: files_to_delete
+
+- name: Ansible remove swap file glob
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  with_items: "{{ files_to_delete.files }}"
+
+
+
+#
+# パッケージの追加
+#
+- name: Update apt-get repo and cache
+  apt: update_cache=yes force_apt_get=yes cache_valid_time=3600
+
+- name: Install Ubuntu package
+  apt:
+    name: "{{ packages }}"
+    state: present
+  vars:
+    packages:
+    - nfs-common
+    - nfs-client
+    - ruby
+    - emacs-nox
+
+#
+# カーネル設定変更
+#
+- name: Configure Kernel parameter
+  include_tasks: kernel-param.yaml
+
+- name: Ensure /etc/hosts
+  template:
+    src: hosts.j2
+    dest: /etc/hosts
+    owner: root
+    group: root
+    mode: '0644'
+
+
+
+#
+# 管理ユーザーをrootグループへ追加
+#
+- name: admin  user add root group
+  user:
+    name: "{{ cluster_admin }}"
+    groups: root
+    append: yes
+
+- name: Ensure group 'admin' exists
+  group:
+    name:  "{{ cluster_admin }}"
+    state: present
+
+- name: Add the user 'admin' with a bash shell,
+  user:
+    name:  "{{ cluster_admin }}"
+    shell: /bin/bash
+    group: "{{ cluster_admin }}"
+
+- name: add sudoers
+  template:
+    src:  sudor.j2
+    dest: "/etc/sudoers.d/{{ cluster_admin }}"
+    owner: root
+    group: root
+    mode: '0440'
+
+
+- debug: msg="{{ ansible_facts.virtualization_type }}"
+#
+# SSH鍵の共有
+#
+- name: SSH KEY FOR VAGRANT
+  include_tasks: sshkey-sharing-vagrant.yaml
+  when: ansible_facts.virtualization_type == "virtualbox"
+
+- name: SSH-KEY FOR QEMU/KVM
+  include_tasks: sshkey-sharing-kvm.yaml
+  when: ansible_facts.virtualization_type == "kvm"
+
+
+#
+# Vagrant時のコンテナ用のファイルシステム
+#
+- name: Create Container filesystem for Vagrant
+  filesystem:
+    fstype: ext4
+    dev: /dev/sdc
+  when: sw_container_fs == True and ansible_facts.devices.sdc is defined
+    
+- name: Create mount point for Vagrant
+  file:
+    path: /var/lib/containerd
+    owner: root
+    group: root
+    mode: '0755'
+    state: directory
+  when: sw_container_fs == True and ansible_facts.devices.sdc is defined
+
+- name: Mount device by /dev/sdc for Vagrant
+  mount:
+    path: /var/lib/containerd
+    src:  /dev/sdc
+    fstype: ext4
+    state: mounted
+  when: sw_container_fs == True and ansible_facts.devices.sdc is defined
+
+
+#
+# QEMU/KVM時のコンテナ用ファイルシステム
+#
+- name: Create Container filesystem for QEMU/KVM
+  filesystem:
+    fstype: ext4
+    dev: /dev/vdb
+  when: sw_container_fs == True and ansible_facts.devices.vdb is defined
+    
+- name: Create mount point for QEMU/KVM
+  file:
+    path: /var/lib/containerd
+    owner: root
+    group: root
+    mode: '0755'
+    state: directory
+  when: sw_container_fs == True and ansible_facts.devices.vdb is defined
+
+- name: Mount up device by /dev/vdb for QEMU/KVM
+  mount:
+    path: /var/lib/containerd
+    src:  /dev/vdb
+    fstype: ext4
+    state: mounted
+  when: sw_container_fs == True and ansible_facts.devices.vdb is defined
+
+

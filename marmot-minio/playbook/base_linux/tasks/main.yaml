@@ -1,0 +1,81 @@
+#
+# カーネル設定変更
+#
+- name: Configure Kernel parameter
+  include_tasks: kernel-param.yaml
+
+#
+# プライベートCA証明書の取得
+#
+- name: Download CA pem
+  get_url:
+    url: "https://{{ public_ip_dns }}/ca.pem"
+    dest: /etc/ssl/certs/labo_local_ca.pem
+    validate_certs: no
+    mode: 0440
+
+#
+# DNSの設定を変更
+#
+- name: set systemd-resolved config
+  template:
+    src: resolved.conf.j2
+    dest: /etc/systemd/resolved.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+#
+# シンボリックリング /etc/resolv.conf を変更
+#
+- name: change symbolic link for /etc/resolv.conf
+  shell: |
+    ln -sf ../run/systemd/resolve/resolv.conf resolv.conf
+  args:
+    chdir: /etc
+
+#
+# リスタート　systemctl restart systemd-resolved
+#
+- systemd:
+    name: systemd-resolved
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
+
+#
+# HOSTS設定
+#
+- name: Ensure /etc/hosts
+  template:
+    src: hosts.j2
+    dest: /etc/hosts
+    owner: root
+    group: root
+    mode: '0644'
+
+#
+# パッケージの追加
+#
+- name: Update apt-get repo and cache
+  apt: update_cache=yes force_apt_get=yes cache_valid_time=3600
+
+- name: Install Ubuntu package
+  apt:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+  register: apt_res
+  retries: 10
+  delay: 60
+  until: apt_res is success
+  vars:
+    packages:
+    - jq
+    - nfs-common
+    - nfs-client
+    - emacs-nox
+    - ca-certificates
+    - curl
+
+

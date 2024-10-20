@@ -1,0 +1,30 @@
+import boto3
+import urllib3
+
+urllib3.disable_warnings()
+
+
+
+s3 = boto3.resource(
+     's3',
+     endpoint_url='https://minio.labo.local:9002',
+     aws_access_key_id='sSJSyiiLqVD3wX6gk5HJ', # ログイン名
+     aws_secret_access_key='mtcEbUYKSEPKuQkNhOzmVWBnJjOBMLOQzlthbTxe', # ログインパスワード
+     verify=False
+)
+
+# 全バケットを表示
+print("\n*** Bucket List ***")
+for bucket in s3.buckets.all():
+    print(bucket.name)
+
+# バケット内の全オブジェクトを表示
+BUCKET_NAME = 'loki'
+print("\n*** Object List in Bucket: ",BUCKET_NAME, "***")
+bucket = s3.Bucket(BUCKET_NAME)
+objects = bucket.objects.all()
+for obj in objects:
+    print(obj.key)
+
+print("\n")
+

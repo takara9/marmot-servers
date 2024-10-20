@@ -1,0 +1,72 @@
+# 
+# ブートノードに共通ソフトをダウンロードする
+# 
+- name: re-setup
+  hosts: all
+  gather_facts: yes
+  become: yes
+  roles:
+    - base_linux
+
+- name: Base configuration for all nodes
+  hosts:
+    - masters
+    - nodes
+  gather_facts: yes
+  become: yes
+  roles:
+    - setup_kubeadm
+
+
+
+- name: Download software packeges
+  vars:
+    download_node: bootnode
+  hosts:
+    - bootnode
+  become: yes
+  tasks:
+    - debug: msg="{{ ansible_facts }}"  
+  roles:
+    - bootnode
+    - role: runtime_containerd
+      when: container_runtime == "containerd"
+    - role: runtime_cri-o
+      when: container_runtime == "cri-o"
+    - role: runtime_docker
+      when: container_runtime == "docker"
+    #- role: net_flannel
+    #  when: pod_network == "flannel"
+    #- etcd      
+    #- kubernetes
+    #- cert_setup
+    - coredns_external
+
+#
+# クラスタの全てのノードからbootnodeのNFSサーバーをマウントする
+#
+- name: Mount NFS (bootnode)
+  hosts: all
+  become: yes
+  tasks:
+  - include_tasks: tasks/setup_k8s_dirs.yml
+  - name: mount bootnode /srv/k8s
+    mount:
+      path: /mnt
+      src: bootnode:/srv/k8s
+      fstype: nfs
+      state: mounted
+
+#
+# NFS上ディレクトリで keepalivedをビルドするため、NFSマウント後に配置
+#
+- name: build keepalived
+  vars:
+    download_node: bootnode
+  hosts:
+  - bootnode
+  become: yes
+  roles:
+    - keepalived
+
+

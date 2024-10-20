@@ -1,0 +1,241 @@
+- name: Run the equivalent of "apt-get update" as a separate step
+  apt:
+    update_cache: yes
+
+- name: Install a list of packages
+  apt:
+    name: "{{ packages }}"
+    state: present
+  vars:
+    packages:
+    - build-essential
+    - autoconf
+    - libdb5.3-dev 
+    - php
+    - php-ldap
+    - php-xml
+    - php-fpm
+    - libsasl2-dev
+    - libltdl-dev
+    - libgnutls28-dev
+#
+# OpenLDAP のソースコード取得
+#
+- name: Download OpenLdap
+  get_url:
+    url:  https://www.openldap.org/software/download/OpenLDAP/openldap-release/openldap-2.4.57.tgz
+    dest: "{{ fs_ldap }}"
+    mode: 0440
+
+#
+# OpenLDAP コードを展開
+#
+- name: Unarcvhice OpenLdap
+  unarchive:
+    src:  "{{ fs_ldap }}/openldap-2.4.57.tgz"
+    dest: "{{ fs_ldap }}"
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes    
+
+#
+# データ用ディレクトリ作成
+#
+- name: create slapd.d
+  file:
+    state: directory
+    path: /ldap/etc/slapd.d
+    owner: root
+    group: root
+    mode: '0755'
+
+#
+# OpenLDAP をビルド
+#
+- name: configure 
+  shell: |
+      ./configure --prefix=/ldap --enable-spasswd --enable-slapi --with-tls
+  args:
+      chdir: "{{ fs_ldap }}/openldap-2.4.57"
+- name: make depend
+  shell: |
+      make depend
+  args:
+      chdir: "{{ fs_ldap }}/openldap-2.4.57"
+- name: make install
+  shell: |
+      make install
+  args:
+      chdir: "{{ fs_ldap }}/openldap-2.4.57"
+- name: create symbolic link
+  shell: |
+     ls /ldap/bin > /tmp/ldap_command_list
+     while read cmd; do
+       ln -s /ldap/bin/$cmd $cmd
+     done </tmp/ldap_command_list
+     rm /tmp/ldap_command_list
+  args:
+      chdir: /usr/local/bin
+
+#
+# OpenLDAPの設定ファイルをコピー　（こっちは未使用）
+#
+- name: copy slapd.conf
+  template:
+    src: slapd.conf
+    dest: /ldap/etc/openldap/slapd.conf
+    owner: root
+    group: root
+    mode: '0600'
+
+#
+# OpenLDAPのLDIFファイルをコピー（こちらを使用）
+#   データをDBへロード
+#
+- name: copy slapd.ldif
+  template:
+    src: slapd.ldif
+    dest: /ldap/etc/openldap/slapd.ldif
+    owner: root
+    group: root
+    mode: '0600'
+- name: create symbolic link
+  shell: |
+    /ldap/sbin/slapadd -n 0 -F /ldap/etc/slapd.d -l /ldap/etc/openldap/slapd.ldif
+
+
+#
+# systemd の設定と開始
+#
+- name: copy slapd.service
+  template:
+    src: slapd.service
+    dest: /etc/systemd/system/slapd.service
+    owner: root
+    group: root
+    mode: '0644'
+- systemd:
+    name:  slapd
+    state: started
+    daemon_reload: yes
+    enabled: yes
+
+#
+# LDAP初期設定実施
+#
+- name: create ldif directory
+  file:
+    state: directory
+    path: /ldap/ldif
+    owner: root
+    group: root
+    mode: '0755'
+
+#########
+- name: copy README.md
+  copy:
+    src:  README.md
+    dest: /ldap/ldif/
+
+- name: copy org.ldif
+  copy:
+    src:  org.ldif
+    dest: /ldap/ldif/
+- command: ldapadd -x -w secret -D "cn=Manager,dc=labo,dc=local" -f org.ldif
+  args:
+    chdir: /ldap/ldif
+
+
+- name: copy org-unit-group.ldif
+  copy:
+    src:  org-unit-group.ldif
+    dest: /ldap/ldif/
+- command: ldapadd -x -w secret -D "cn=Manager,dc=labo,dc=local" -f org-unit-group.ldif
+  args:
+    chdir: /ldap/ldif
+
+- name: copy org-unit.ldif
+  copy:
+    src:  org-unit.ldif
+    dest: /ldap/ldif/
+- command: ldapadd -x -w secret -D "cn=Manager,dc=labo,dc=local" -f org-unit.ldif
+  args:
+    chdir: /ldap/ldif
+
+
+- name: copy user1.ldif 
+  copy:
+    src:  user1.ldif 
+    dest: /ldap/ldif/
+- command: ldapadd -x -w secret -D "cn=Manager,dc=labo,dc=local" -f user1.ldif 
+  args:
+    chdir: /ldap/ldif
+
+- name: copy user2.ldif 
+  copy:
+    src:  user2.ldif 
+    dest: /ldap/ldif/
+- command: ldapadd -x -w secret -D "cn=Manager,dc=labo,dc=local" -f user2.ldif 
+  args:
+    chdir: /ldap/ldif
+
+- name: copy user3.ldif 
+  copy:
+    src:  user3.ldif 
+    dest: /ldap/ldif/
+- command: ldapadd -x -w secret -D "cn=Manager,dc=labo,dc=local" -f user3.ldif 
+  args:
+    chdir: /ldap/ldif
+
+
+- name: copy linux group 
+  copy:
+    src:  org-unit-posix-grp.ldif
+    dest: /ldap/ldif/
+- command: ldapadd -x -w secret -D "cn=Manager,dc=labo,dc=local" -f org-unit-posix-grp.ldif
+  args:
+    chdir: /ldap/ldif
+
+- name: copy linux user 
+  copy:
+    src:  linux_user1.ldif
+    dest: /ldap/ldif/
+- command: ldapadd -x -w secret -D "cn=Manager,dc=labo,dc=local" -f linux_user1.ldif
+  args:
+    chdir: /ldap/ldif
+
+
+
+
+
+
+#########
+
+
+#
+# phpLDAPadminのインストール
+#
+- name: Install phpLDAPadmin
+  shell: |
+    git clone https://github.com/breisig/phpLDAPadmin
+    cd phpLDAPadmin/config
+    cp config.php.example config.php
+  args:
+      chdir: "{{ fs_ldap }}"
+
+
+#
+# 設定変更とPHP実行環境の再スタート
+#
+- name: change socket addr
+  replace: >-
+    dest='/etc/php/7.4/fpm/pool.d/www.conf'
+    regexp='^listen = /run/php/php7.4-fpm.sock'
+    replace='listen = 127.0.0.1:9000'
+- name: restart php7.4-fpm
+  systemd:
+    name: php7.4-fpm
+    state: restarted
+    daemon_reload: yes
+    enabled: yes

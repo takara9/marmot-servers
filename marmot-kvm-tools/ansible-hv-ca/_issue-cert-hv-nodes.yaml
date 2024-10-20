@@ -1,0 +1,97 @@
+#
+# 各HyperVisorノードの証明書を作成する
+#
+
+- name: "Check existing {{ ansible_facts.hostname }}-certificate.pem"
+  stat:
+     path: "/home/{{ admin_user }}/CA/{{ ansible_facts.hostname }}-certificate.pem"
+  register: item_regi
+  delegate_to: localhost
+
+
+- name: Copy hv-node info to homedir for tls server XXX
+  template:
+    src:  "hv-server.info"
+    dest: "/home/{{ admin_user }}/CA/{{ ansible_facts.hostname }}-server.info"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    mode: '0600'
+  when: item_regi.stat.exists == False
+  delegate_to: localhost
+
+
+
+- name: Create hv-node key for tls server
+  shell: |
+     (umask 277 && certtool --generate-privkey > {{ ansible_facts.hostname }}-server-key.pem)
+  args:
+    chdir: "/home/{{ admin_user }}/CA"
+  when: item_regi.stat.exists == False
+  delegate_to: localhost
+
+
+- name: Create hv-node cert for tls server
+  shell: |
+    certtool --generate-certificate \
+      --template {{ ansible_facts.hostname }}-server.info \
+      --load-privkey {{ ansible_facts.hostname }}-server-key.pem \
+      --load-ca-certificate certificate_authority_certificate.pem \
+      --load-ca-privkey certificate_authority_key.pem \
+      --outfile {{ ansible_facts.hostname }}-server-certificate.pem
+  args:
+    chdir: "/home/{{ admin_user }}/CA"
+  when: item_regi.stat.exists == False
+  delegate_to: localhost
+
+
+- name: Copy hv-node info to homedir for tls client
+  template:
+    src:  "hv-client.info"
+    dest: "/home/{{ admin_user }}/CA/{{ ansible_facts.hostname }}-client.info"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    mode: '0600'
+  when: item_regi.stat.exists == False
+  delegate_to: localhost
+
+
+- name: Create hv-node key for tls client
+  shell: |
+     (umask 277 && certtool --generate-privkey > {{ ansible_facts.hostname }}-client-key.pem)
+  args:
+    chdir: "/home/{{ admin_user }}/CA"
+  when: item_regi.stat.exists == False
+  delegate_to: localhost
+
+
+- name: Create hv-node cert for tls server
+  shell: |
+    certtool --generate-certificate \
+      --template {{ ansible_facts.hostname }}-client.info \
+      --load-privkey {{ ansible_facts.hostname }}-client-key.pem \
+      --load-ca-certificate certificate_authority_certificate.pem \
+      --load-ca-privkey certificate_authority_key.pem \
+      --outfile {{ ansible_facts.hostname }}-client-certificate.pem
+  args:
+    chdir: "/home/{{ admin_user }}/CA"
+  when: item_regi.stat.exists == False
+  delegate_to: localhost
+
+
+
+
+
+#
+# 証明書の表示
+#
+- shell: |
+    openssl x509 -text -fingerprint -noout -in {{ ansible_facts.hostname }}-client-certificate.pem
+  register: cert_text
+  args:
+    chdir: "/home/{{ admin_user }}/CA"
+  delegate_to: localhost
+
+
+- debug: msg="{{ cert_text.stdout_lines }}"
+
+

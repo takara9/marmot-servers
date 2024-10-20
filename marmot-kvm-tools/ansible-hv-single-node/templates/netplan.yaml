@@ -1,0 +1,16 @@
+network:
+  version: 2
+  ethernets:
+    enx00e04c6803b0:
+      dhcp4: false
+    enp4s0:
+      addresses:
+      - 192.168.1.33/24
+      gateway4: 192.168.1.1
+      nameservers:
+        addresses:
+        - 192.168.1.241
+      routes:
+        - to: 10.0.0.0/8
+          via: 192.168.1.253
+

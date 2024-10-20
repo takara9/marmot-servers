@@ -1,0 +1,25 @@
+
+- include_tasks: dl_cni_plugin.yaml
+  when:
+    - ansible_facts.hostname is match(download_node)
+
+- include_tasks: dl_crictl.yaml
+  when:
+    - ansible_facts.hostname is match(download_node)
+
+- include_tasks: install_crictl.yaml
+  when:
+    - ansible_facts.hostname is not match(download_node)
+
+
+- include_tasks: install_crio.yaml
+  when:
+    - ansible_facts.hostname is not match(download_node)
+
+
+    
+
+    
+
+
+

@@ -1,0 +1,16 @@
+- name: install ssh-key & install docker
+  hosts: builds
+  become: true
+  vars:
+    mail_domain: "labo.local"
+    fqdn: "jenkins.labo.local"
+    dst_dir: "/etc/apache2/ssl"
+
+  roles:
+    - base_linux
+    - docker
+    - kubernetes
+    - java
+    - mail-client
+    - download_certs
+

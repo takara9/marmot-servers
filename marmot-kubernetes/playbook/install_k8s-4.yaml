@@ -1,0 +1,18 @@
+#
+# 外部リクエストをk8sクラスタ内へ導く外部LBを設定
+#
+- name: Setup the external LoadBalancer
+  hosts:
+  - elbs
+  vars:
+    - lb_pos: "Frontend"
+    - download_node: bootnode
+  gather_facts: yes
+  become: yes
+  become_user: root
+  become_method: sudo
+  roles:
+    - haproxy
+    - keepalived
+    - coredns_external
+    - loadbalancer_controller

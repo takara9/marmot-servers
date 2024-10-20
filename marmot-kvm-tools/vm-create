@@ -1,0 +1,318 @@
+#!/usr/bin/ruby
+# coding: utf-8
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+require 'mb_string'
+require 'yaml'
+require 'json'
+require 'etc'
+require 'fileutils'
+require 'etcdv3'
+require_relative 'libruby/read_yaml.rb'
+require_relative 'libruby/util_defs.rb'
+require_relative 'libruby/vm-apply-ansible.rb'
+require_relative 'libruby/lib_scheduler.rb'
+
+$config_yaml = "Qemukvm.yaml"  # コンフィグファイル名
+$target_host = nil    # 対象ホスト名
+$reuse_bootnode = nil # bootnodeの再利用
+$wkdir = nil
+$test_mode = nil
+
+##
+## 仮想マシンの作成と起動
+##
+def create_vm(node)
+  #
+  # 仮想マシンの名前を作成
+  #
+  vm_name = ""
+  if defined? $conf['cluster_name'] and $conf['cluster_name'].to_s.length > 0
+    vm_name = sprintf("%s-%s", node['name'],$conf['cluster_name'])
+  else
+    vm_name = sprintf("%s", node['name'])
+  end
+  node['vm_name'] = vm_name
+  start_tm(sprintf("仮想マシン生成中 : %s\n", vm_name))
+  
+  
+  #
+  # ハイパーバイザーのホストへ自動スケジュール
+  #  割当のハイパーバイザーのホスト名は ret['hv_node']
+  #  スケジュール出来なければ ret = nil を返す
+  start_tm("ハイパーバイザーのホストへ自動スケジュール\n")
+  ret = hvm_schedule(node)
+  if ret == nil
+    finish_tm(1)
+    return 1
+  else
+    start_tm(sprintf("* スケジュール成功 on %s\n", ret['hv_node']))
+    finish_tm(0) 
+    node['vm_host'] = ret['hv_node']
+  end
+
+  
+  # libvirtd接続先作成
+  #  構成ファイルにvm_hostが設定されていれば、接続パラメータを追加する
+  hvm = ""
+  if defined? node['vm_host'] and node['vm_host'].to_s.length > 0
+    if node['vm_host'] != `hostname`.strip
+      hvm = sprintf("--connect=qemu+tls://%s/system", node['vm_host'])
+    end
+  end
+  
+  # bootnodeを再利用の判定
+  if node['name'].start_with?("bootnode") and $reuse_bootnode == true
+    cmd = sprintf("virsh %s domstate %s", hvm, vm_name)
+    #puts "\n", cmd
+    %x( #{cmd} )
+    retc = $?.exitstatus
+    if retc == 0
+      finish_tm(0)
+      return 0
+    end
+  end
+
+  #
+  # OS仮想ディスクのセットアップ
+  #
+  if defined? node['vm_host'] and node['vm_host'].to_s.length > 0 and node['vm_host'] != `hostname`.strip
+    #
+    # vm_hostが指定されていれば、設定プログラムをHVノードへ転送してOSディスク設定を実行する
+    #
+    start_tm("* 設定プログラムをHVノードへ転送してOSディスク設定\n")
+    FileUtils.cp "/usr/local/bin/vm-create-remote", $wkdir + "/vm-create-remote"
+    cmd = sprintf("scp -r -i %s/.ssh/id_rsa -o 'StrictHostKeyChecking no'  %s %s@%s: ",Dir.home,$wkdir,Etc.getlogin,node['vm_host'])
+    #puts cmd
+    %x( #{cmd} )
+    if $?.exitstatus != 0
+      finish_tm(1)
+      return 1
+    end
+
+    cmd = sprintf("ssh -i %s/.ssh/id_rsa %s@%s \"sudo /home/%s/%s/vm-create-remote\"",Dir.home,Etc.getlogin,node['vm_host'],Etc.getlogin, File.basename($wkdir))
+    #puts cmd
+    %x( #{cmd} )
+    if $?.exitstatus != 0
+      finish_tm(1)
+      return 1
+    end
+    finish_tm(0)
+  else
+    #
+    # ローカルホストの中で、OSディスク設定を実行する
+    #
+    start_tm("* ローカルでOSディスク設定をする\n")
+    
+    require_relative 'vm-create-remote'
+    ret = configure_os_vdisk(node)
+    finish_tm(ret)
+    if ret != 0
+      return 1
+    end
+  end
+  
+  
+  #
+  # 仮想サーバーの起動
+  #
+  start_tm("* Virt 仮想サーバーの起動\n")  
+  cmd = "virt-install "
+  # vm_hostがあれば、HVノードのパラメータを追加
+  if defined? node['vm_host'] and node['vm_host'].to_s.length > 0
+    cmd << sprintf("%s", hvm)
+  end
+  cmd << sprintf(" --name %s", vm_name)
+  cmd << sprintf(" --memory %s", node['memory'])
+  cmd << sprintf(" --vcpus %s", node['cpu'])
+  cmd << sprintf(" --cpu kvm64 --hvm")
+  cmd << sprintf(" --os-variant %s", $conf['os_variant'])
+  if ! node['public_ip'].nil? 
+    cmd << sprintf(" --network network=%s,model=virtio --network network=%s --network network=%s --network bridge=%s", "default","private","public","virbr1")
+  else
+    cmd << sprintf(" --network network=%s,model=virtio --network network=%s --network bridge=%s", "default","private","virbr1")
+  end
+  cmd << sprintf(" --import --graphics none --noautoconsole")
+
+  # OSのブートディスク
+  cmd << sprintf(" --disk %s/%s.qcow2", $conf['image_default_path'], vm_name)  
+
+  # 互換性確保のため storage について、容量のみ指定、パスと容量指定の２つを残す
+  if ! node['storage'].nil?
+    node['storage'].each_with_index do |val,idx|
+      path = $conf['image_default_path']  # 容量のみ指定時には、デフォルトのパスを設定する 。     
+      size = val             # 容量のみ指定時は、そのままサイズを設定
+      if ! val.is_a?(Numeric)
+        path = val['path']
+        size = val['size']
+      end
+      cmd << sprintf(" --disk path=%s/%s-%d.qcow2,size=%d",path,vm_name,idx.to_i,size)
+    end
+  end
+    
+  puts cmd
+  %x( #{cmd} )
+  retc = $?.exitstatus
+  finish_tm(retc)
+  if retc != 0
+    return 1
+  end
+
+
+  #
+  # 仮想化ホストの再起動後も自動起動に設定
+  #
+  start_tm("* ハイパーバイザーホストの再起動後も仮想マシンの自動起動に設定\n")
+  cmd = sprintf("virsh %s autostart %s", hvm, vm_name)
+  #puts "\n", cmd  
+  %x( #{cmd} )
+  retc = $?.exitstatus
+  finish_tm(retc)
+  if retc != 0
+    return 1
+  end
+  return 0
+  
+end
+
+
+##
+## メイン処理
+##
+if __FILE__ == $0
+  ## コマンド引数の取得
+  arg_state = nil
+  ARGV.each_with_index do |arg, i|
+    if arg_state == nil
+      arg_state = arg
+      if arg_state == "-r"
+        $reuse_bootnode = true
+      end
+      # テストモード（ドライラン）
+      if arg_state == "-t"
+        $test_mode = true
+      end
+    else
+      if arg_state == "-f"
+        $config_yaml = arg
+      end
+      if arg_state == "-n"
+        $target_host = arg
+      end
+      arg_state = nil
+    end
+  end
+
+
+  #
+  # コンフィグファイルの読み取り
+  #
+  #step_start2("コンフィグファイルの読み取り")
+  #printf("* コンフィグファイル名: %s\n",$config_yaml)
+  vm_config = read_yaml_config($config_yaml)
+  #step_end( vm_config.length > 0 ? 0 : 1 )
+  #printf("\n")
+
+  #################################
+  #printf("image template: %s \n", $conf['image_template_path'])
+  #printf("default_path:   %s \n", $conf['image_default_path'])
+  #printf("\n")
+  #
+  #$vm_config_array.each do |val|
+  #  node = eval(val)
+  #  printf("%s \n", node['name'])
+  #
+  #  if ! node['storage'].nil?
+  #    node['storage'].each do |val|
+  #      #printf(" %s \n", val)
+  #      #printf("name =  %s \n", val['name'])
+  #      #printf("  size =  %d \n", val['size'])
+  #      #printf("  path =  %s \n", val['path'])
+  #      #printf("\n")
+  #    end
+  #  end
+  #end
+  #################################
+  #exit
+  
+  ##
+  ## ワークディレクトリの作成、存在しなければ作成
+  ##
+  start_tm("* ワークディレクトリが存在しなければ作成\n")
+  $wkdir = Dir.getwd + "/__work"
+  if File.exist?($wkdir) == false
+    FileUtils.mkdir($wkdir)
+    FileUtils.chmod(0755, $wkdir)
+  end
+  finish_tm(0)  
+  
+  ##
+  ##　HVコントロール
+  ##
+  #hvm = hvm_connect()
+  
+  ##
+  ## 仮想サーバーのSSH鍵の生成
+  ##
+  #step_start2("SSH鍵の生成")
+  start_tm("* SSH鍵 ")
+  Dir.chdir '__work'
+  if File.exist?('id_rsa.pub')
+    printf("既存鍵を利用します\n")
+  else
+    printf("新規に生成します\n")
+    puts %x( ssh-keygen -t rsa -N '' -f id_rsa)
+  end
+  Dir.chdir ".."
+  finish_tm(0)  
+  #step_end(0)
+  #printf("\n")
+
+  ##
+  ## リモートで実行するための構成ファイル作成
+  ##
+  start_tm("リモートで実行するための構成ファイル作成\n")
+  f = File.open($wkdir + '/k8s_cluster_config.json',"w")
+  f.puts(JSON.generate($conf))
+  f.close
+  finish_tm(0)
+  
+  ##
+  ## コンフィグに従って仮想マシンを起動
+  ##
+  $vm_config_array.each do |val|
+    node = eval(val)
+    if $target_host.nil?
+      # リモートで実行するためのJSONファイルを作成
+      f = File.open($wkdir + '/node.json',"w")
+      f.puts(JSON.generate(val))
+      f.close
+      ret = create_vm(node)      
+      if ret != 0
+        #!exit(1)
+        next
+      end
+    else
+      if $target_host == node['name']
+        ret = create_vm(node)
+        if ret != 0
+          #!exit(1)
+          next
+        end
+      end
+    end
+
+    ##
+    ## Ansible Playbookの指定があれば実行
+    ##
+    if node['playbook'].nil? == false
+      start_tm("起動完了待ち 60秒")
+      sleep 60
+      finish_tm(0)
+      apply_ansible_playbook(node)
+    end
+    
+  end # END OF NODE
+end # END OF MAIN   
+  

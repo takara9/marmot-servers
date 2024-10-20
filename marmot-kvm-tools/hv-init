@@ -1,0 +1,57 @@
+#!/usr/bin/ruby
+# coding: utf-8
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+#
+# ハイパーバイザーの構成ファイルを読み込んで
+# etcdのデータを初期化する 
+#
+
+require 'etcdv3'
+require "json"
+require 'yaml'
+require_relative 'libruby/lib_scheduler.rb'
+
+$conn = nil
+$conf = nil
+$hv_config_yaml = nil
+
+#
+# メイン
+#
+if __FILE__ == $0
+  arg_state = nil  
+  ARGV.each_with_index do |arg, i|
+    if arg_state == nil
+      arg_state = arg
+    else    
+      if arg_state == "-f"
+        $hv_config_yaml = arg
+      end
+    end
+  end
+  
+  # HVノードの構成情報をetcdへセット
+  #printf("ETCDへの接続\n")
+  #hvm = hvm_connect()
+  etcd_connect()
+  
+  # ハイパーバイザーのリスト削除
+  printf("HVノードのリスト削除\n")  
+  $conn.del('hvr1', range_end: 'hvr99')
+
+  # VMのリスト削除
+  printf("VMノードのリスト削除\n")  
+  $conn.del('vm1', range_end: 'vm999')
+  
+  # VMのシリアル番号を削除
+  printf("VM管理データ初期化\n")      
+  $conn.put('vm_serial', '1')
+  $conn.put('hv_rotate', '0')
+
+  # HVデータの読み取りとetcdへの書込み
+  printf("HVデータの読み取りとetcdへの書込みり\n")
+  hvm_hv_config($hv_config_yaml)
+  
+end # END OF MAIN   

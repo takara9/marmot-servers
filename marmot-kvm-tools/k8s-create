@@ -1,0 +1,205 @@
+#!/bin/bash
+#
+# 構成ファイルからK8sクラスタを起動するシェル
+#
+# 以下の構成ファイルは環境変数に設定する
+#
+
+# パラメータ
+while getopts f:s: flag
+do
+    case "${flag}" in
+        f) CONFIGFILE=${OPTARG};;
+        s) STOP_STAGE=${OPTARG};;
+    esac
+done
+echo "CONFIGFILE: $CONFIGFILE";
+echo "STOP_STAGE: $STOP_STAGE";
+
+if [ -z "$CONFIGFILE" ]; then
+    if [ -f .vm_running_config.dat ]; then
+	CONFIGFILE=$(cat .vm_running_config.dat)
+    fi
+fi
+
+if [ -z "$CONFIGFILE" ]; then
+    echo "-f 構成ファイル"
+    exit
+fi
+
+if [ -z "$STOP_STAGE" ]; then
+    echo "-s 終了ステップ指定"
+    echo "  1: 実行中の仮想サーバー群の削除、ブートノードを除く"
+    echo "  2: 仮想サーバー群の起動、ブートノードが起動してれば除く"
+    echo "  3: Linuxのベースイメージの設定実施まで"
+    echo "  4: Ansible pingでの疎通確認まで"
+    echo "  0: K8sクラスタ構築完了まで"
+    exit
+fi
+
+
+
+# 開始時刻
+echo $CONFIGFILE > .vm_running_config.dat
+start_date=$(date +%s)
+
+# パラメータ設定
+start_line=$(cat $CONFIGFILE |grep 'name: bootnode' -n |sed 's/://g' | awk '{print $1}')
+let end_line=$start_line+10
+BOOTNODE_IP=$(cat $CONFIGFILE |awk "NR==$start_line,NR==$end_line {print}" |grep private_ip |awk '{print $2}' |sed 's/\"//g')
+
+if [ -z "$BOOTNODE_IP" ]; then
+BOOTNODE_IP=$(cat $CONFIGFILE |awk "NR==$start_line,NR==$end_line {print}" |grep public_ip |awk '{print $2}' |sed 's/\"//g')
+fi
+
+EXT_APISERVER_IP=$(cat $CONFIGFILE |grep "front_proxy_vip:" |sed 's/://g' | awk '{print $2}')
+INT_APISERVER_IP=$(cat $CONFIGFILE |grep "kube_apiserver_vip:" |sed 's/://g' | awk '{print $2}')
+CLUSTER_NAME=$(cat $CONFIGFILE |grep "cluster_name:" |sed 's/://g' | awk '{print $2}')
+VM_HOSTS=$(cat $CONFIGFILE | grep "vm_host:" |wc -l)
+
+
+
+# 構成ファイルの設定
+#   Ansibleプレイブックの生成
+/usr/local/bin/pb-cleanup
+/usr/local/bin/pb-setup -f $CONFIGFILE
+
+
+# 実行中の仮想サーバー群の削除、ブートノードを除く
+#/usr/local/bin/vm-destroy -f $CONFIGFILE -r
+#
+#if [ $STOP_STAGE = "1" ]; then
+#    exit 0
+#fi
+
+echo "待機中 10秒"
+sleep 10
+
+
+# 仮想サーバー群の起動、ブートノードが起動してれば除く
+if [ $VM_HOSTS -gt 0 ]; then
+    # CLUSTER Hyper Visor
+    /usr/local/bin/vm-create -f $CONFIGFILE -r
+else
+    # SINGLE Hyper Visor
+    sudo /usr/local/bin/vm-create -f $CONFIGFILE -r    
+fi
+if [ $? -ne 0 ]; then
+    exit 1
+fi
+
+
+
+# 現在のディレクトリ名を取得して変数にセット
+rat=($(echo $PWD | tr "/" "\n"))
+size=${#rat[@]}
+let pos=$size-1
+base=${rat[$pos]}
+
+if [ $STOP_STAGE = "2" ]; then
+    exit 0
+fi
+
+# Change owner when single hypervisor
+if [ $VM_HOSTS -eq 0 ]; then
+  USER_ID=$(id -u)
+  GROUP_ID=$(id -g)
+  sudo chown -R ${USER_ID}:${GROUP_ID} __work
+fi
+
+
+echo "VMの起動待機中 120秒"
+sleep 120
+
+# Linuxのベースイメージの設定実施　仮想サーバー群
+echo "OS設定実施"
+/usr/local/bin/vm-setup -f $CONFIGFILE
+if [ $? -ne 0 ]; then
+    echo "Linuxのベースイメージの設定実施"
+    exit 1
+fi
+
+if [ $STOP_STAGE = "3" ]; then
+    exit 0
+fi
+
+echo BOOTNODE_IP $BOOTNODE_IP
+
+
+# 設定対象のサーバーの疎通確認
+ssh  -i __work/id_rsa ubuntu@$BOOTNODE_IP -o "StrictHostKeyChecking no" "cd $base && sudo ansible -i hosts_kvm all -m ping"
+if [ $? -ne 0 ]; then
+    echo "Ansible pingの失敗、処理中断"
+    exit 1
+fi
+
+if [ $STOP_STAGE = "4" ]; then
+    exit 0
+fi
+
+ssh  -i __work/id_rsa ubuntu@$BOOTNODE_IP -o "StrictHostKeyChecking no" "cd $base && sudo ansible-playbook -i hosts_kvm playbook/install_k8s-1.yaml"
+if [ $? -ne 0 ]; then
+    echo "Ansibleプレイブックの適用失敗、処理中断"    
+    exit 1
+fi
+
+ssh  -i __work/id_rsa ubuntu@$BOOTNODE_IP -o "StrictHostKeyChecking no" "cd $base && sudo ansible-playbook -i hosts_kvm playbook/install_k8s-2.yaml"
+if [ $? -ne 0 ]; then
+    echo "Ansibleプレイブックの適用失敗、処理中断"    
+    exit 1
+fi
+
+ssh  -i __work/id_rsa ubuntu@$BOOTNODE_IP -o "StrictHostKeyChecking no" "cd $base && sudo ansible-playbook -i hosts_kvm playbook/install_k8s-3.yaml"
+if [ $? -ne 0 ]; then
+    echo "Ansibleプレイブックの適用失敗、処理中断"    
+    exit 1
+fi
+
+ssh  -i __work/id_rsa ubuntu@$BOOTNODE_IP -o "StrictHostKeyChecking no" "cd $base && sudo ansible-playbook -i hosts_kvm playbook/install_k8s-4.yaml"
+if [ $? -ne 0 ]; then
+    echo "Ansibleプレイブックの適用失敗、処理中断"    
+    exit 1
+fi
+
+ssh  -i __work/id_rsa ubuntu@$BOOTNODE_IP -o "StrictHostKeyChecking no" "cd $base && sudo ansible-playbook -i hosts_kvm playbook/install_k8s-5.yaml"
+if [ $? -ne 0 ]; then
+    echo "Ansibleプレイブックの適用失敗、処理中断"    
+    exit 1
+fi
+
+ssh  -i __work/id_rsa ubuntu@$BOOTNODE_IP -o "StrictHostKeyChecking no" "cd $base && sudo ansible-playbook -i hosts_kvm playbook/install_k8s-6.yaml"
+if [ $? -ne 0 ]; then
+    echo "Ansibleプレイブックの適用失敗、処理中断"    
+    exit 1
+fi
+
+ssh  -i __work/id_rsa ubuntu@$BOOTNODE_IP -o "StrictHostKeyChecking no" "cd $base && sudo ansible-playbook -i hosts_kvm playbook/install_k8s-7.yaml"
+if [ $? -ne 0 ]; then
+    echo "Ansibleプレイブックの適用失敗、処理中断"    
+    exit 1
+fi
+
+
+# KUBECONFIGのコピー
+scp -i __work/id_rsa ubuntu@$BOOTNODE_IP:/srv/k8s/kubeconfig/admin.kubeconfig .
+
+if [ $? -eq 0 ]; then
+    sed -i "s/$INT_APISERVER_IP/$EXT_APISERVER_IP/g" admin.kubeconfig
+    mv admin.kubeconfig admin.kubeconfig-$CLUSTER_NAME
+    chown $SUDO_UID:$SUDO_GID admin.kubeconfig-$CLUSTER_NAME
+    export KUBECONFIG=$(pwd)/admin.kubeconfig-$CLUSTER_NAME
+    echo "export KUBECONFIG=$(pwd)/admin.kubeconfig-$CLUSTER_NAME" > .kubeconf
+    echo "alias k=kubectl" >> .kubeconf    
+    chown $SUDO_UID:$SUDO_GID .kubeconf
+    echo
+    echo "export KUBECONFIG=$KUBECONFIG"
+    echo
+fi
+
+
+
+# 開始時刻
+finsih_date=$(date +%s)
+let elapse_time=$finsih_date-$start_date
+echo "開始からの経過時刻 = " $elapse_time "秒"
+

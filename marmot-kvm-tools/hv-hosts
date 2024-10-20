@@ -1,0 +1,38 @@
+#!/usr/bin/ruby
+# coding: utf-8
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+#
+# ハイパーバイザーのクラスタの
+# 仮想マシンの割り当て状態をリストする。
+#
+
+require 'etcdv3'
+require "json"
+require 'yaml'
+$conn = nil
+require_relative 'libruby/lib_scheduler.rb'
+
+#
+# メイン
+#
+if __FILE__ == $0
+
+  etcd_connect()
+  begin
+    ## ハイパーバイザーのリスト
+    hv_list = $conn.get('hvr1', range_end: 'hvr99')
+    hv_hosts = ""
+    for hv in hv_list.kvs
+      hv = JSON.parse!(hv.value)
+      if hv_hosts == ""
+        hv_hosts = hv['nodename']
+      else 
+        hv_hosts = hv_hosts + " " + hv['nodename']
+      end
+    end
+  end
+  printf("%s", hv_hosts)
+  
+end # END OF MAIN   

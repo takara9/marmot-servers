@@ -1,0 +1,39 @@
+#
+# CONTAINERD
+#
+
+- name: Downloading containerd 0
+  stat:
+    path: "{{ download_dir }}/containerd-{{ containerd_version }}.linux-amd64.tar.gz"
+  #when: ansible_facts.hostname is match(download_node) and containerd_version is version('1.3.4', '<')
+  when: containerd_version is version('1.3.4', '<')
+  register: regi_containerd
+
+
+- get_url:
+    url: "https://github.com/containerd/containerd/releases/download/v{{ containerd_version }}/containerd-{{ containerd_version }}.linux-amd64.tar.gz"
+    dest: "{{ download_dir }}"
+    mode: '0644'
+  when:
+    - containerd_version is version('1.3.4', '<')
+    - regi_containerd.stat.exists == False
+
+#
+# CONTAINERD 1.3.4以上
+#
+
+- name: Downloading containerd 1
+  stat:
+    path: "{{ download_dir }}/containerd-{{ containerd_version }}-linux-amd64.tar.gz"
+  #when: ansible_facts.hostname is match(download_node) and containerd_version is version('1.3.4', '>')
+  when: containerd_version is version('1.3.4', '>')
+  register: regi_containerd
+
+- get_url:
+    url: "https://github.com/containerd/containerd/releases/download/v{{ containerd_version }}/containerd-{{ containerd_version }}-linux-amd64.tar.gz"
+    dest: "{{ download_dir }}"
+    mode: '0644'
+  when:
+    - containerd_version is version('1.3.4', '>')
+    - regi_containerd.stat.exists == False
+

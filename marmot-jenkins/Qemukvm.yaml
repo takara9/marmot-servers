@@ -1,0 +1,64 @@
+#
+# 最小構成のJenkins
+#
+domain: labo.local
+cluster_name: jenkins
+
+## Hypervisor type
+##  kvm : QEMU+KVM + virsh
+hypervisor: kvm
+
+## 仮想マシンイメージの設定
+##
+image_template_path: /home/images
+image_default_path:  /stg2
+#qcow2_image: ubuntu18.04.qcow2
+#os_variant:  ubuntu18.04
+qcow2_image: ubuntu20.04-amd.qcow2
+os_variant:  ubuntu20.04
+
+
+## Cluster Network
+private_ip_subnet: 172.16.0.0/16
+public_ip_subnet:  192.168.1.0/24
+
+public_ip_gw:  192.168.1.1
+public_ip_dns: 192.168.1.8
+
+### Network device and config
+net_dev_default: enp1s0
+net_dev_private: enp2s0
+net_dev_public:  enp3s0
+
+
+
+### Master, Worker, Internal/Frontend Loadbalancer and bootnode
+vm_spec:
+  - name: "build1"
+    cpu: 2
+    memory: 8192
+    private_ip: "172.16.0.224"
+    public_ip:  "192.168.1.224"
+    playbook: install_node.yaml    
+    comment:  "Jenkins worker node #1"
+    
+  - name: "build2"
+    cpu: 2
+    memory: 8192
+    private_ip: "172.16.0.225"
+    public_ip:  "192.168.1.225"
+    storage:
+    - 50
+    - 80    
+    playbook: install_node.yaml
+    comment:  "Jenkins worker node #2"
+
+
+  - name: "control"
+    cpu: 2
+    memory: 4096
+    private_ip: "172.16.0.223"
+    public_ip:  "192.168.1.223"
+    playbook: install.yaml
+    comment: "Jenkins master node #1"
+

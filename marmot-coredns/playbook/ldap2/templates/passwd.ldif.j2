@@ -1,0 +1,4 @@
+dn: olcDatabase={1}mdb,cn=config
+replace: olcRootPW
+olcRootPW: {{ PWD_HASH.stdout }}
+

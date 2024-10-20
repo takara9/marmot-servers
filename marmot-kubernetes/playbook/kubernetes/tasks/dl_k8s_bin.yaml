@@ -1,0 +1,40 @@
+#
+# Kubernetesのバイナリファイルのインストール
+#
+- debug: msg="kubernetes_custom = {{ kubernetes_custom }}"
+
+#
+# ダウンロードとtarファイルの展開
+#
+- name: Downloading Kubernetes binary
+  stat:
+    path: "{{ download_dir }}/kubernetes-server-linux-amd64.tar.gz"
+  register: regi_k8s_bin
+
+- get_url:
+    url: https://dl.k8s.io/v{{ kubernetes_version }}/kubernetes-server-linux-amd64.tar.gz
+    dest: "{{ download_dir }}"
+    mode: '0644'
+  when: regi_k8s_bin.stat.exists == False and kubernetes_custom == False
+
+- name: Check unarchive 
+  stat:
+    path: "{{ download_dir }}/kubernetes/server/bin/kube-apiserver"
+  register: regi_check_kube_apiserver
+
+- unarchive:
+    src:  "{{ download_dir }}/kubernetes-server-linux-amd64.tar.gz"
+    dest: "{{ download_dir }}"
+    remote_src: True
+  when: kubernetes_custom == False and regi_check_kube_apiserver.stat.exists == False
+
+#
+# bin以下だけを NFSエクスポートディレクトリへコピー
+#
+- name: Copy kubernetes binary to nfs
+  shell: |
+    cp -fr {{ download_dir }}/kubernetes/server/bin/* {{ work_dir }}/bin
+    chmod -R 0755 {{ work_dir }}/bin
+    #rm -fr {{ download_dir }}/kubernetes
+  when: kubernetes_custom == False
+

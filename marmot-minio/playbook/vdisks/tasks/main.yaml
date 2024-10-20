@@ -1,0 +1,44 @@
+- name: Ensure group "minio" exists
+  ansible.builtin.group:
+    name: minio
+    state: present
+
+- name: Add user 
+  ansible.builtin.user:
+    name: minio
+    groups: minio
+    password: "{{ 'minio' | password_hash('sha512') }}"
+
+
+- name: Create mount point
+  file:
+    path: "{{ item.mountpoint }}"
+    owner: minio
+    group: minio
+    mode: '2775'
+    state: directory
+  loop:  "{{ disks }}"
+
+- name: Object Storage Disk 
+  filesystem:
+    fstype: xfs
+    dev: "{{ item.dev }}"
+  loop:  "{{ disks }}"
+
+- name: Mount device
+  mount:
+    path: "{{ item.mountpoint }}"
+    src:  "{{ item.dev }}"
+    fstype: xfs
+    state: mounted
+  loop:  "{{ disks }}"
+
+
+- name: Recursively change ownership
+  file:
+    path: "{{ item.mountpoint }}"
+    state: directory
+    recurse: yes
+    owner: "minio"
+    group: "minio"
+  loop:  "{{ disks }}"

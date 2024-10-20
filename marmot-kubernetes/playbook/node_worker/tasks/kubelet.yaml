@@ -1,0 +1,76 @@
+- copy:
+    src: "{{ r_k8s_binary }}/kubelet"
+    dest: /usr/local/bin
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Configure the Kubelet
+  copy:
+    src: "{{ r_ca_home2 }}/{{ ansible_facts.hostname }}-key.pem"
+    dest: /etc/kubernetes/pki
+    owner: root
+    group: root
+    mode: '0600'
+    remote_src: yes
+- copy:
+    src: "{{ r_ca_home2 }}/{{ ansible_facts.hostname }}.pem"
+    dest: /etc/kubernetes/pki    
+    owner: root
+    group: root
+    mode: '0600'
+    remote_src: yes
+- copy:
+    src: "{{ r_ca_kubeconfig }}/{{ ansible_facts.hostname }}.kubeconfig"
+    dest: /etc/kubernetes/node.conf
+    owner: root
+    group: root
+    mode: '0600'
+    remote_src: yes
+- copy: 
+    src: "{{ r_ca_home2 }}/ca.pem"
+    dest: /etc/kubernetes/pki
+    owner: root
+    group: root
+    mode: '0600'
+    remote_src: yes
+
+- template:
+    src: kubelet-config.yaml
+    dest: /etc/kubernetes/config
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: copy kubelet.service for containerd
+  template:
+    src: kubelet.service
+    dest: /etc/systemd/system/kubelet.service
+    owner: root
+    group: root
+    mode: '0644'
+  when: container_runtime == "containerd"
+  
+- name: copy kubelet.service for docker
+  template:
+    src: kubelet.service_for_docker
+    dest: /etc/systemd/system/kubelet.service
+    owner: root
+    group: root
+    mode: '0644'
+  when: container_runtime == "docker"
+
+- name: copy kubelet.service for cri-o
+  template:
+    src: kubelet.service_for_cri-o
+    dest: /etc/systemd/system/kubelet.service
+    owner: root
+    group: root
+    mode: '0644'
+  when: container_runtime == "cri-o"
+  
+- systemd:
+    name: kubelet
+    state: started
+    daemon_reload: yes
+    enabled: yes

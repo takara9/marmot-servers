@@ -1,0 +1,27 @@
+#
+# K8sクラスタが合致していないと利用できないアドオン
+# プレイブック生成の構成ファイルのSWが設定が必要
+#
+- name: Deploy addon 2
+  hosts: bootnode
+  gather_facts: yes
+  become: yes
+  roles:
+    # メトリックス管理 PromethusとGrafana
+    #   条件: Cephなどストレージが必要
+    - addon_promethus2
+    #- addon_grafana
+      
+    # ログ分析 Elasticsearch と Kibana
+    #   条件: Cephなどストレージが必要    
+    - addon_elk
+
+    # サービスメッシュ Istio
+    #   条件: 外部向けLBが必要
+    - addon_istio
+
+    # サーバーレス Knative
+    #   条件: LBコントローラーが必要
+    - addon_knative
+
+

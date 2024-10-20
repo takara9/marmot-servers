@@ -1,0 +1,23 @@
+# tkr, group, labo.local
+dn: cn=tkr,ou=group,dc=labo,dc=local
+cn: tkr
+gidNumber: 10001
+objectClass: posixGroup
+
+# Maho Takara, people, labo.local
+dn: cn=Maho Takara,ou=people,dc=labo,dc=local
+objectClass: posixAccount
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+loginShell: /bin/bash
+homeDirectory: /home/tkr
+uid: tkr
+cn: Maho Takara
+uidNumber: 10000
+gidNumber: 10001
+sn: Takara
+givenName: Maho
+mail: takara9@gmail.com
+mobile: 09047190000
+initials: MT

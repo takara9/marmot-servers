@@ -1,0 +1,67 @@
+#!/bin/bash
+#
+# 構成ファイルからK8sクラスタを起動するシェル
+#
+# 以下の構成ファイルは環境変数に設定する
+#
+
+# パラメータ
+while getopts f:s: flag
+do
+    case "${flag}" in
+        f) CONFIGFILE=${OPTARG};;
+    esac
+done
+echo "CONFIGFILE: $CONFIGFILE";
+echo "STOP_STAGE: $STOP_STAGE";
+
+if [ -z "$CONFIGFILE" ]; then
+    if [ -f .vm_running_config.dat ]; then
+	CONFIGFILE=$(cat .vm_running_config.dat)
+    fi
+fi
+
+if [ -z "$CONFIGFILE" ]; then
+    echo "-f 構成ファイル"
+    exit
+fi
+
+# 開始時刻
+echo $CONFIGFILE > .vm_running_config.dat
+
+# パラメータ設定
+start_line=$(cat $CONFIGFILE |grep 'name: bootnode' -n |sed 's/://g' | awk '{print $1}')
+let end_line=$start_line+10
+BOOTNODE_IP=$(cat $CONFIGFILE |awk "NR==$start_line,NR==$end_line {print}" |grep private_ip |awk '{print $2}' |sed 's/\"//g')
+
+if [ -z "$BOOTNODE_IP" ]; then
+BOOTNODE_IP=$(cat $CONFIGFILE |awk "NR==$start_line,NR==$end_line {print}" |grep public_ip |awk '{print $2}' |sed 's/\"//g')
+fi
+
+EXT_APISERVER_IP=$(cat $CONFIGFILE |grep "front_proxy_vip:" |sed 's/://g' | awk '{print $2}')
+INT_APISERVER_IP=$(cat $CONFIGFILE |grep "kube_apiserver_vip:" |sed 's/://g' | awk '{print $2}')
+CLUSTER_NAME=$(cat $CONFIGFILE |grep "cluster_name:" |sed 's/://g' | awk '{print $2}')
+VM_HOSTS=$(cat $CONFIGFILE | grep "vm_host:" |wc -l)
+
+
+echo BOOTNODE_IP $BOOTNODE_IP
+
+
+# KUBECONFIGのコピー
+scp -i __work/id_rsa ubuntu@$BOOTNODE_IP:/srv/k8s/kubeconfig/admin.kubeconfig .
+
+if [ $? -eq 0 ]; then
+    sed -i "s/$INT_APISERVER_IP/$EXT_APISERVER_IP/g" admin.kubeconfig
+    mv admin.kubeconfig admin.kubeconfig-$CLUSTER_NAME
+    chown $SUDO_UID:$SUDO_GID admin.kubeconfig-$CLUSTER_NAME
+    export KUBECONFIG=$(pwd)/admin.kubeconfig-$CLUSTER_NAME
+    echo "export KUBECONFIG=$(pwd)/admin.kubeconfig-$CLUSTER_NAME" > .kubeconf
+    echo "alias k=kubectl" >> .kubeconf    
+    chown $SUDO_UID:$SUDO_GID .kubeconf
+    echo
+    echo "export KUBECONFIG=$KUBECONFIG"
+    echo
+fi
+
+
+

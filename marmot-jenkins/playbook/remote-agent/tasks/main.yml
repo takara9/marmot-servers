@@ -1,0 +1,44 @@
+- name: mkdir .ssh directory
+  file:
+    path: "{{ jenkins_ssh }}"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: '0700'
+
+- name: Copy shared_fs keys to id_rsa.pub
+  command: cp "{{ root_ssh }}/id_rsa.pub" "{{ jenkins_ssh }}/id_rsa.pub"
+
+- file:
+    path: "{{ jenkins_ssh }}/id_rsa.pub"
+    owner: jenkins
+    group: jenkins
+    mode: '0444'
+
+- name: Copy shared_fs/keys to id_rsa
+  command: cp "{{ root_ssh }}/id_rsa" "{{ jenkins_ssh }}/id_rsa"
+
+- file:
+    path: "{{ jenkins_ssh }}/id_rsa"
+    owner: jenkins
+    group: jenkins
+    mode: '0400'
+
+- name: Create authorized_keys
+  command: cp "{{ root_ssh }}/id_rsa.pub" "{{ jenkins_ssh }}/authorized_keys"
+
+- file:
+    path:  "{{ jenkins_ssh }}/authorized_keys"
+    owner: jenkins
+    group: jenkins
+    mode: '0400'
+
+
+- name: add .ssh/config
+  template:
+    src:  config
+    dest: "{{ jenkins_ssh }}/config"
+    owner: jenkins
+    group: jenkins
+    mode: '0400'
+

@@ -1,0 +1,184 @@
+- name: Setup as hypervisor node
+  gather_facts: yes
+  vars:
+    #admin_user: hv-admin
+    admin_user: tkr
+  hosts:
+    - localhost
+  become: yes
+  roles:
+  tasks:
+
+  #
+  # QEMU/KVMに必要なパッケージのインストール
+  #
+  - name: Install sw package for QEMU/KVM
+    apt:
+      name: "{{ packages }}"
+      state: present
+    vars:
+      packages:    
+        - qemu
+        - qemu-kvm
+        - libvirt-daemon
+        - libvirt-clients
+        - bridge-utils
+        - virt-manager
+        - virt-top
+        - ruby
+        - ruby-bundler
+        - net-tools
+
+  #
+  # libvirtd スタート
+  #
+  - name: Start libvirtd
+    systemd:
+      name: libvirtd
+      state: started
+      daemon_reload: yes
+      enabled: yes
+
+  #
+  # HV管理ユーザーをrootグループへ追加
+  #
+  - name: "{{ admin_user }} user add root group"
+    user:
+      name: "{{ admin_user }}"
+      groups: root
+      append: yes
+
+  - name: "Ensure group {{ admin_user }} exists"
+    group:
+      name:  "{{ admin_user }}"
+      state: present
+
+  - name: "Add the user {{ admin_user }} with a bash shell"
+    user:
+      name:  "{{ admin_user }}"
+      shell: /bin/bash
+      group: "{{ admin_user }}"
+
+  - name: add sudoers
+    template:
+      src:  sudor.j2
+      dest: "/etc/sudoers.d/{{ admin_user }}"
+      owner: root
+      group: root
+      mode: '0440'
+
+  - name: mkdir .ssh
+    file:
+      path: "/home/{{ admin_user }}/.ssh"
+      state: directory
+      owner: "{{ admin_user }}"
+      group: "{{ admin_user }}"
+      mode: '0700'
+
+  - name: copy public key for ssh
+    copy:
+      src:  authorized_keys
+      dest: "/home/{{ admin_user }}/.ssh/authorized_keys"
+      owner: "{{ admin_user }}"
+      group: "{{ admin_user }}"
+      mode: '0600'
+
+  #
+  # ルートでAnsibleで操作できるように設定する
+  #
+  - name: mkdir .ssh on root homedir
+    file:
+      path: /root/.ssh
+      state: directory
+      owner: root
+      group: root
+      mode: '0700'
+
+  - name: copy public key root homedir
+    copy:
+      src:  authorized_keys
+      dest: /root/.ssh/authorized_keys
+      owner: root
+      group: root
+      mode: '0600'
+
+  #
+  # プライベート　ブリッジネットワークの作成
+  #
+  - name: copy virt net template-file for private-net
+    template:
+      src:  net-private.xml
+      dest: "/home/{{ admin_user }}"
+      owner: "{{ admin_user }}"
+      group: "{{ admin_user }}"
+      mode: '0440'
+
+  - name: existing virsh net private
+    command: virsh net-info private
+    register: net_private
+    ignore_errors: yes
+
+  #- debug: msg="net_private = {{ net_private.failed }}"
+
+  - name: create virt private network
+    shell: |
+      virsh net-define net-private.xml \
+      && virsh net-start private \
+      && virsh net-autostart private
+    args:
+      chdir: "/home/{{ admin_user }}"    
+    when: net_private.failed == true
+
+  #
+  # パブリック ブリッジネットワークの作成
+  #
+  - name: copy virt net template-file for public-net
+    template:
+      src:  net-public.xml
+      dest: "/home/{{ admin_user }}"
+      owner: "{{ admin_user }}"
+      group: "{{ admin_user }}"
+      mode: '0440'
+
+  - name: existing virsh net public
+    command: virsh net-info public
+    register: net_public
+    ignore_errors: yes
+
+  #- debug: msg="net_public = {{ net_public.failed }}"
+
+  - name: create virt public network
+    shell: |
+      virsh net-define net-public.xml \
+      && virsh net-start public \
+      && virsh net-autostart public
+    args:
+      chdir: "/home/{{ admin_user }}"    
+    when: net_public.failed == true
+
+  #
+  # ネットワークインタフェースの設定
+  #
+  - name: config network interfaces
+    template:
+      src:  netplan.yaml
+      dest: /etc/netplan/00-installer-config.yaml
+      owner: root
+      group: root
+      mode: '0440'
+
+  - name: apply netplan
+    command: netplan apply
+
+
+  #
+  # 仮想サーバーのイメージ保存用ディレクトリの作成
+  #
+  - name: mkdir for k8s bin
+    file:
+      path: /home/images
+      state: directory
+      owner: root
+      group: root
+      mode: '0775'
+

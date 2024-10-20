@@ -1,0 +1,145 @@
+- debug: msg="{{ ansible_facts.hostname }}"
+
+- name: check istio
+  stat:
+    path: "{{ cadmin_home }}/istio-{{ istio_version }}/README.md"
+  register: file_istio
+
+#
+# istioctrl のインストール
+#
+- name: install Istio step-1
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    curl -L https://istio.io/downloadIstio | ISTIO_VERSION={{ istio_version }} TARGET_ARCH=x86_64 sh -
+  args:
+    chdir: "{{ cadmin_home }}"
+  when: file_istio.stat.exists == False
+
+#
+# istioctl は bootnode の /usr/local/bin へ配置する
+#
+- name: deploy istioctl to /usr/local/bin
+  copy:
+    src: "{{ cadmin_home }}/istio-{{ istio_version }}/bin/istioctl"
+    dest: /usr/local/bin
+    owner: root
+    group: root
+    mode: '0755'
+
+#
+# Istioのインストール
+#
+- name: install Istio operator init
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    istioctl operator init
+  args:
+    chdir: "{{ cadmin_home }}/istio-{{ istio_version }}"
+
+# isito-systemの名前空間は自動作成されるため、このステップは廃止
+#- name: create namespace istio-system
+#  become_user: "{{ cluster_admin }}"
+#  shell: |
+#    kubectl create ns istio-system
+#  args:
+#    chdir: "{{ cadmin_home }}/istio-{{ istio_version }}"
+
+#
+# Istio オペレーターAPIの配置
+#
+- name: copy yaml for Istio Operator
+  template:
+    src: istio-op-install.yaml
+    dest: "{{ cadmin_home }}/istio-{{ istio_version }}/istio-op-install.yaml"
+    owner: "{{ cluster_admin }}"
+    group: "{{ cluster_admin }}"
+    mode: '0644'
+
+#
+# IstioオペレーターによるIstioコントロールプレーンのインストール
+#
+- name: install istio-system
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl apply -f istio-op-install.yaml
+  args:
+    chdir: "{{ cadmin_home }}/istio-{{ istio_version }}"
+
+
+##
+## 名前空間 default のインジェクションを明示的に禁止する
+##
+- name: Disable istio-injection at default namespace
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl label namespace default istio-injection=disabled --overwrite=true
+  args:
+    chdir: "{{ cadmin_home }}/"
+
+
+##
+## ISTIOアプリケーション用ネームスペース作成
+##
+- name: create namespace for istio-apls
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl create ns istio-apl1
+    kubectl label namespace istio-apl1 istio-injection=enabled --overwrite
+    kubectl create ns istio-apl2
+    kubectl label namespace istio-apl2 istio-injection=enabled --overwrite
+  args:
+    chdir: "{{ cadmin_home }}/istio-{{ istio_version }}"
+
+
+
+########################################
+##
+## Istio Gateway 用の証明書作成
+##
+- name: Create Secret for TLS
+  #include_tasks: tls.yaml
+  include_tasks: tls_download.yaml
+    
+
+########################################
+##
+## Kiali, Jeager のインストールと公開
+## 
+- name: Deploy prometheus.yaml
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl apply -f prometheus.yaml
+  args:
+    chdir: "{{ cadmin_home }}/istio-{{ istio_version }}/samples/addons/"
+
+- name: Deploy grafana.yaml
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl apply -f grafana.yaml
+  args:
+    chdir: "{{ cadmin_home }}/istio-{{ istio_version }}/samples/addons/"
+
+- name: Deploy jaeger.yaml
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl apply -f jaeger.yaml
+    kubectl patch svc tracing -n istio-system -p '{"spec":{"type":"NodePort","ports":[{"name": "http","port": 80,"nodePort": 32095}]}}'    
+  args:
+    chdir: "{{ cadmin_home }}/istio-{{ istio_version }}/samples/addons/"
+
+- name: Deploy kiali.yaml
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl apply -f kiali.yaml
+    sleep 60
+    kubectl apply -f kiali.yaml
+    kubectl patch svc kiali -n istio-system -p '{"spec":{"type":"NodePort","ports":[{"name": "http","port": 20001,"nodePort": 32001},{"port":9090, "nodePort":32090}]}}'
+  args:
+    chdir: "{{ cadmin_home }}/istio-{{ istio_version }}/samples/addons/"
+
+
+    
+    
+  
+

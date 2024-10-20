@@ -1,0 +1,87 @@
+- name: Run the equivalent of "apt-get update" as a separate step
+  apt:
+    update_cache: yes
+
+- name: Install a list of packages
+  apt:
+    name: "{{ packages }}"
+    state: present
+  vars:
+    packages:
+    - php7.4-mbstring
+    - php7.4-gd
+    - php7.4-gmp
+    - php7.4-zip
+    - language-pack-en-base
+    - language-pack-en    
+
+#
+# LAMのソースコード取得
+#
+- name: Download LAM
+  get_url:
+    url: http://prdownloads.sourceforge.net/lam/{{ lam }}.tar.bz2 
+    dest: "{{ fs_ldap }}"
+    mode: 0440
+
+#
+# LAMコードを展開
+#
+- name: Unarcvhice OpenLdap
+  unarchive:
+    src:  "{{ fs_ldap }}/{{ lam }}.tar.bz2"
+    dest: "{{ fs_ldap }}"
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+
+#
+# LAM をビルド
+#
+- name: configure 
+  shell: |
+      ./configure --with-httpd-user=www-data --with-httpd-group=www-data --with-web-root=/usr/local/lam
+      make install
+  args:
+      chdir: "{{ fs_ldap }}/{{ lam }}"
+
+
+
+#
+# データ用ディレクトリ作成
+#
+- name: create /usr/local/lam/var/tmp
+  file:
+    state: directory
+    path:  /usr/local/lam/var/tmp
+    owner: www-data
+    group: www-data
+    mode: '0755'
+
+- name: create /usr/local/lam/var/sess
+  file:
+    state: directory
+    path:  /usr/local/lam/var/sess
+    owner: www-data
+    group: www-data
+    mode: '0755'
+
+
+#
+#  Nginx conf for LAM
+#
+- name: copy nginx/conf.d
+  template:
+    src: ldap.conf
+    dest: /etc/nginx/conf.d/ldap.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Restart nginx
+  systemd:
+    name: nginx
+    state: restarted
+    daemon_reload: yes
+
