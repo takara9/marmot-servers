@@ -16,11 +16,22 @@
 
 ## 起動方法
 
-~~~
+仮想マシンの起動
+```
 tkr@hmc:~/marmot-servers/marmot-coredns$ mactl create
 成功終了
+```
 
-# 起動確認
+稼働確認
+```
+tkr@hmc:~/marmot-servers/marmot-coredns$ mactl status
+CLUSTER    VM-NAME          H-Visr STAT  VKEY                 VCPU  RAM    PubIP           PriIP           DATA STORAGE        
+infra      coredns          hv1    RUN   vm_coredns_0124      2     4096   172.16.0.8      192.168.1.8     2   2   2   2   2   
+```
+
+Ansibleでの起動確認
+
+```
 tkr@hmc:~/marmot-servers/marmot-coredns$ ansible -i inventory all -m ping
 coredns | SUCCESS => {
     "ansible_facts": {
@@ -29,8 +40,12 @@ coredns | SUCCESS => {
     "changed": false,
     "ping": "pong"
 }
+```
 
-# セットアップ
+
+インストールとセットアップ
+
+```
 tkr@hmc:~/marmot-servers/marmot-coredns$ ansible-playbook -i inventory playbook/install.yaml 
 PLAY [basic information] **********************************************************************
 TASK [Gathering Facts] ************************************************************************
@@ -43,16 +58,10 @@ changed: [coredns]
 
 PLAY RECAP *************************************************************************************************************************************
 coredns                    : ok=143  changed=130  unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
-~~~
-
-稼働確認
-```
-tkr@hmc:~/marmot-servers/marmot-coredns$ mactl status
-CLUSTER    VM-NAME          H-Visr STAT  VKEY                 VCPU  RAM    PubIP           PriIP           DATA STORAGE        
-infra      coredns          hv1    RUN   vm_coredns_0124      2     4096   172.16.0.8      192.168.1.8     2   2   2   2   2   
 ```
 
-## 削除
+
+## 仮想マシンの削除
 
 ~~~
 tkr@hmc:~/marmot-servers/marmot-coredns$ mactl destroy
