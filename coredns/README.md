@@ -1,4 +1,9 @@
-# Marmot CoreDNS VM上でCoreDNSを構築するAnsibleプレイブック
+# VM上でCoreDNS他を構築するAnsibleプレイブック
+
+## 概要
+
+これはMarmotで起動した仮想マシン上で、CoreDNSサーバーを構成します。
+また、このサーバーには、以下の設定が入っています。
 
 * プライベート認証局
 * プライベートドメインのDNSサーバー（CoreDNS）
@@ -6,15 +11,10 @@
 * OIDC認証サーバー(Federated identity 環境)
 * Nginx (Virtual Host環境)
 * Docker & Docker-Compose 環境
-* メールサーバー labo.localドメイン(予定）
+* メールサーバー labo.localドメイン（予定）
 
 
-## 概要
-
-これはLinuxのでCoreDNSサーバーを構成するAnsibleコードです。
-
-
-## QEMU/KVMの起動方法
+## 起動方法
 
 ~~~
 tkr@hmc:~/marmot-servers/marmot-coredns$ mactl create
