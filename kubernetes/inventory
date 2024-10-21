@@ -47,8 +47,9 @@ lb_vip_range           = 20
 cluster_admin            = ubuntu
 
 public_ip_dns            = "172.16.0.8"
-#kubernetes_version       = "1.24.12"
-kubernetes_version       = "1.28.14-2.1"
+#kubernetes_version      = "1.24.12"
+#kubernetes_version       = "1.28.14-2.1"
+kubernetes_version       = "1.29.9-1.1"
 kubernetes_dashborad_ver = "v7.8.0"
 go_version               = "1.18.2"
 docker_version           = "5:19.03.12~3-0~ubuntu-focal"
