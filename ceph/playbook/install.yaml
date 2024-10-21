@@ -1,0 +1,23 @@
+# Cephクラスタ用のセットアップを実施
+- name: Install hosts file etc
+  become: yes
+  hosts: all
+  gather_facts: yes
+  roles:
+    - linux-setup
+
+# Cephクラスタの構築　ノード1をマスターとして、順番に追加
+- name: Install and Setup Ceph
+  become: yes
+  hosts: node1
+  gather_facts: yes
+  vars:
+    nodes:
+    - { name: "node1", pri_ip: "172.16.0.31", ids: "0" }
+    - { name: "node2", pri_ip: "172.16.0.32", ids: "1" }
+    - { name: "node3", pri_ip: "172.16.0.33", ids: "2" }
+    - { name: "node4", pri_ip: "172.16.0.34", ids: "3" }  
+    - { name: "node5", pri_ip: "172.16.0.35", ids: "4" }      
+  roles:
+    - ceph
+

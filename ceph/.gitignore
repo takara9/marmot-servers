@@ -1,0 +1,5 @@
+/.vagrant
+/vdisk/*.vdi
+*.log
+*~
+__*

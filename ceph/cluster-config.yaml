@@ -1,0 +1,83 @@
+#
+# Cephクラスタの構成
+#
+domain: labo.local
+cluster_name: ceph
+os_variant:  ubuntu20.04
+
+
+## CEPHのバージョン指定
+
+### Master, Storage Node, Test Client
+vm_spec:
+  - name: "node1"
+    cpu: 2
+    memory: 6144
+    private_ip: "172.16.0.31"
+    public_ip:  "192.168.1.231"
+    storage:
+    - name: data
+      size: 120
+      vg:   vg2
+    playbook: install.yaml
+    comment:  "Ceph storage node #1"
+
+  - name: "node2"
+    cpu: 2
+    memory: 6144
+    private_ip: "172.16.0.32"
+    public_ip:  "192.168.1.232"
+    storage:
+    - name: data
+      size: 120
+      vg:   vg2
+    playbook: install.yaml
+    comment:  "Ceph storage node #2"
+
+  - name: "node3"
+    cpu: 2
+    memory: 6144
+    private_ip: "172.16.0.33"
+    public_ip:  "192.168.1.233"
+    storage:
+    - name: data
+      size: 120
+      vg:   vg2
+    playbook: install.yaml
+    comment:  "Ceph storage node #3"
+
+  - name: "node4"
+    cpu: 2
+    memory: 6144
+    private_ip: "172.16.0.34"
+    public_ip:  "192.168.1.234"
+    storage:
+    - name: data
+      size: 120
+      vg:   vg2
+    playbook: install.yaml
+    comment:  "Ceph storage node #4"
+
+  - name: "node5"
+    cpu: 2
+    memory: 6144
+    private_ip: "172.16.0.35"
+    public_ip:  "192.168.1.235"
+    storage:
+    - name: data
+      size: 120
+      vg:   vg2
+    playbook: install.yaml
+    comment:  "Ceph storage node #5"
+
+
+#  - name: "client"
+#    cpu: 1
+#    memory: 2048
+#    private_ip: "172.16.0.40"
+#    playbook: install.yaml
+#    comment:  "Ceph client node"
+
+
+
+
