@@ -1,6 +1,0 @@
-localhost   ansible_connection=local
-
-[all:vars]
-master_node    =  192.168.1.9
-
-

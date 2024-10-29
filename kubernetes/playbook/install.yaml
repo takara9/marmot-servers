@@ -98,8 +98,8 @@
   gather_facts: yes
   become: yes
   roles:
+    - addon_metrics-server
     - addon_helm3
     - addon_ingress
-    - addon_metrics-server
     - addon_dashboard
 
