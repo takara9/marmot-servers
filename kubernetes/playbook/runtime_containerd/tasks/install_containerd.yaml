@@ -91,8 +91,11 @@
     group: root
     mode: '0755'
 
+#
+# メモリ不足時に、OOMでカーネルからキルされないため
+#
 - template:
-    src:  config.toml.j2
+    src:  config.toml-oom.j2
     dest: /etc/containerd/config.toml
     owner: root
     group: root
