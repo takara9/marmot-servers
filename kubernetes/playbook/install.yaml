@@ -98,7 +98,6 @@
   gather_facts: yes
   become: yes
   roles:
-    #- addon_coredns
     - addon_helm3
     - addon_ingress
     - addon_metrics-server

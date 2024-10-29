@@ -32,7 +32,7 @@ vm_spec:
     comment:  "Master node #1"
 
   - name: "node1"
-    cpu: 2
+    cpu: 4
     memory: 8196
     private_ip: "172.16.3.31"
     storage:
@@ -43,7 +43,7 @@ vm_spec:
     comment:  "Worker node #1"
 
   - name: "node2"
-    cpu: 2
+    cpu: 4
     memory: 8196
     private_ip: "172.16.3.32"
     storage:
