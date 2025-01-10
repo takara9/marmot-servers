@@ -1,0 +1,41 @@
+#
+# Kubernetesクラスタ構成ファイル KVM
+#
+## Linux OS Image
+qcow2_image: ubuntu18.04.qcow2
+os_variant: ubuntu18.04
+
+### extra addons
+sw_container_fs: True
+
+### DOMAIN
+cluster_name: k8s2
+ext_domain: k8s2.labo.local
+domain: cluster.local
+
+
+
+### Master, Worker, Internal/Frontend LB and bootnode
+vm_spec:
+  - name: node3
+    cpu: 2
+    memory: 4096
+    private_ip: 172.16.2.25
+    storage:
+    - 8
+    vm_host: auto
+    role: worker
+    playbook: setup_linux.yaml
+    comment: "Worker node #3"
+
+  - name: node4
+    cpu: 2
+    memory: 4096
+    private_ip: 172.16.2.26
+    storage:
+    - 8
+    vm_host: auto
+    role: worker
+    playbook: setup_linux.yaml
+    comment: "Worker node #4"
+

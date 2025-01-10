@@ -1,0 +1,160 @@
+#
+# Kubernetesクラスタ構成ファイル KVM
+#
+## Hypervisor type
+##  kvm : QEMU+KVM + virsh
+##  vv  : VirtualBox + Vagrant 対応廃止
+hypervisor: kvm
+
+
+## 仮想マシンイメージの設定
+##
+image_template_path: /home/images
+image_default_path:  /stg1
+
+#qcow2_image: ubuntu18.04.qcow2
+#os_variant:  ubuntu18.04
+qcow2_image: ubuntu20.04-amd.qcow2
+os_variant:  ubuntu20.04
+
+
+### Container Runtime
+container_runtime:  containerd
+
+# 1.19 が動作しないので、1.3.9に変更してみる
+containerd_version: "1.5.9"
+runc_version:       "v1.0.0"
+crictl_version:     "v1.15.0"
+
+#container_runtime:  docker
+#docker_version:     "5:18.09.9~3-0~ubuntu-bionic"
+docker_version:     "5:19.03.12~3-0~ubuntu-focal"
+
+#container_runtime:  cri-o
+crio_version:       "1.17"
+
+### K8s cluster/pod network CNI plugin
+cni_plugins:        "v0.9.0"
+
+#pod_network: bridge
+#pod_network: flannel
+flannel_version: v0.12.0
+
+pod_network: calico
+calico_version:  v3.14.1
+
+### etcd version
+etcd_version:    v3.4.0
+
+### Kubernetes version
+kubernetes_version: 1.22.4  #OK
+#kubernetes_version: 1.23.0 #NG
+
+kubernetes_custom: False
+kubernetes_dashborad_ver: v2.4.0  # for 1.22
+
+### Cluster Network
+private_ip_subnet: 172.16.0.0/16
+public_ip_subnet:  192.168.1.0/24
+
+### Network device and config
+net_dev_default: enp1s0
+net_dev_private: enp2s0
+net_dev_public:  enp3s0
+
+### ubuntu netplan param for elb1/elb2
+public_ip_gw:  192.168.1.1
+public_ip_dns: 192.168.1.8
+
+## 認証局のIPアドレス  public_ip_dns を流用
+#ca_ip: 192.168.1.8
+
+### Load Balancer config
+keepalived_version: 2.0.15
+
+
+### Internal Load Balancer
+kube_apiserver_vip: 172.16.5.21
+#ka_primary_internal_host: mlb1
+#ka_backup_internal_host: mlb2
+
+### Frontend Load Balancer
+front_proxy_vip: 192.168.1.182
+ka_primary_frontend_host: elb1
+ka_backup_frontend_host: elb2
+
+lb_vip_start: 192.168.1.183
+lb_vip_range: 20
+
+### extra addons
+sw_rook_ceph:    False
+sw_promethus:    False
+sw_grafana:      False
+sw_elk:          False
+sw_istio:        False
+sw_knative:      False
+sw_container_fs: True
+
+
+### DOMAIN
+ext_domain: k8s5.labo.local
+cluster_name: k8s5
+domain: cluster.local
+
+
+### Master, Worker, Internal/Frontend LB and bootnode
+vm_spec:
+  - name: bootnode
+    cpu: 1
+    memory: 2048
+    private_ip: 172.16.5.10
+    storage:
+    - 20
+    comment: "Bootstap node" 
+
+  - name: master1
+    cpu: 2
+    memory: 4096
+    private_ip: 172.16.5.21
+    public_ip:  192.168.1.180
+    storage:
+    - 20
+    comment: "Master node #1"
+    
+  - name: elb1
+    cpu: 1
+    memory: 2048
+    private_ip: 172.16.5.31
+    public_ip:  192.168.1.181
+    storage:
+    - 8
+    role: proxy
+    comment: "Frontend Master Loadbalancer #1"
+
+  - name: node1
+    cpu: 4
+    memory: 16384
+    private_ip: 172.16.5.41
+    storage:
+    - 20
+    role: worker
+    comment: "Worker node #1"
+
+  - name: node2
+    cpu: 4
+    memory: 16384
+    private_ip: 172.16.5.42
+    storage:
+    - 20
+    role: worker
+    comment: "Worker node #2"
+
+  - name: node3
+    cpu: 4
+    memory: 16384
+    private_ip: 172.16.5.43
+    storage:
+    - 20
+    role: worker
+    comment: "Worker node #3"
+

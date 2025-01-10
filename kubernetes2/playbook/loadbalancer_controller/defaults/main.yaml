@@ -1,0 +1,5 @@
+#front_proxy_vip: 192.168.1.111
+#lb_vip_start : 192.168.1.100
+#lb_vip_range : 10
+#net_dev_public : "{{ iface_pub }}"
+

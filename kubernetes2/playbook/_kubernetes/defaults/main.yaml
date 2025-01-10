@@ -1,0 +1,6 @@
+work_dir :       /srv/k8s
+download_dir :   "{{ work_dir }}/download"
+
+GO_VER: 1.14.2
+
+docker_version   : "5:18.09.9~3-0~ubuntu-bionic"

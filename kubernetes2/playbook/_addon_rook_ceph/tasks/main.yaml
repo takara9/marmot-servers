@@ -1,0 +1,139 @@
+##
+## Install ROOK
+##
+- name: check rook
+  stat:
+    path: "{{ cadmin_home }}/rook/README.md"
+  register: regi_rook
+
+- name: git clone rook
+  become_user: "{{ cluster_admin }}"
+  git:
+    repo: 'https://github.com/rook/rook.git'
+    version: "{{ rook_version }}"
+    dest: "{{ cadmin_home }}/rook"
+  when: regi_rook.stat.exists == False
+
+
+#
+# Rook-Cephインストール ROOK Operator & Ceph Cluster
+#
+- name: install Rook-Ceph step-3
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl apply -f common.yaml
+    kubectl apply -f operator.yaml
+  register: results_rook_operator1
+  args:
+    chdir: "{{ cadmin_home }}/rook/cluster/examples/kubernetes/ceph"
+
+#
+# cluster.yaml が存在することを確実にするため、少し待つ
+#
+- name: waiting for starting of the rook ceph operator 
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    while true;
+    do 
+      RUNNING=$(kubectl get po -n rook-ceph |grep Running |wc -l)
+      PODS=$(kubectl get po -n rook-ceph -o name |wc -l)
+      if [ $RUNNING -eq $PODS ]; then
+        sleep 20
+        exit 0
+      else
+        sleep 10
+      fi
+    done
+  args:
+    chdir: "{{ cadmin_home }}/rook/cluster/examples/kubernetes/ceph"
+
+    
+#
+# Rook-Cephインストール ROOK Operator & Ceph Cluster 2
+#
+- name: install Rook-Ceph step-4
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl apply -f cluster.yaml
+  register: results_rook_operator2
+  args:
+    chdir: "{{ cadmin_home }}/rook/cluster/examples/kubernetes/ceph"
+- local_action: copy content="{{  results_rook_operator2.stdout_lines }}" dest="{{ cadmin_home }}/results_rook_operator"
+
+  
+#
+# Ceph Cluseter 起動まで待つ
+#
+- name: wait to complete of stating ceph
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    while true;
+    do 
+      RUNNING=$(kubectl get po -n rook-ceph |grep Running |wc -l)
+      PODS=$(kubectl get po -n rook-ceph -o name |wc -l)
+      if [ $RUNNING -eq $PODS ]; then      
+        exit 0
+      else
+        sleep 10
+      fi
+    done
+  args:
+    chdir: "{{ cadmin_home }}/rook/cluster/examples/kubernetes/ceph"
+
+
+#
+# Ceph Dashboard の設定 　nodeport 番号の固定化
+#
+- name: edit dashboard-external-https.yaml
+  blockinfile:
+    path: "{{ cadmin_home }}/rook/cluster/examples/kubernetes/ceph/dashboard-external-https.yaml"
+    insertafter: '    targetPort: 8443'
+    block: |2
+          nodePort: 30002
+
+#
+# Ceph のパススワード
+#
+- name: save ceph dashboard password
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl -n rook-ceph get secret rook-ceph-dashboard-password -o jsonpath="{['data']['password']}" | base64 --decode && echo
+  register: results_rook_ceph_passwd
+  args:
+    chdir: "{{ cadmin_home }}"
+- local_action: copy content="{{  results_rook_ceph_passwd.stdout_lines }}" dest="{{ cadmin_home }}/passwd_ceph_dashboard"
+  become_user: "{{ cluster_admin }}"
+
+#
+# Rook-Cephインストール Dashboard
+#
+- name: install Rook-Ceph step-4
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl apply -f dashboard-external-https.yaml
+  register: results_rook_ui
+  args:
+    chdir: "{{ cadmin_home }}/rook/cluster/examples/kubernetes/ceph"
+- local_action: copy content="{{  results_rook_ui.stdout_lines }}" dest="{{ cadmin_home }}/results_rook_operator"
+
+#
+# Storage Classs rbd のデプロイ
+#
+- name: deploy rbd storageclass
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl apply -f storageclass.yaml
+    kubectl patch storageclass rook-ceph-block  -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+  args:
+    chdir: "{{ cadmin_home }}/rook/cluster/examples/kubernetes/ceph/csi/rbd"
+
+#
+# Storage Classs cephfs のデプロイ
+#
+- name: deploy cephfs storageclass
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl apply -f storageclass.yaml
+  args:
+    chdir: "{{ cadmin_home }}/rook/cluster/examples/kubernetes/ceph/csi/cephfs"
+

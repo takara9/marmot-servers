@@ -1,0 +1,13 @@
+.:53 {
+    log
+    errors
+    forward . 8.8.8.8 9.9.9.9
+}
+							
+{{ ext_domain }}:53 {
+    file /coredns/{{ cluster_name }}.db
+    log
+    errors
+}
+
+

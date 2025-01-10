@@ -1,0 +1,49 @@
+- name: check a exisiting cfssl 
+  stat:
+    path: "{{ download_dir }}/cfssl"
+  register: regi_cfssl
+  
+- name: downloading cfssl
+  get_url:
+    #url: https://storage.googleapis.com/kubernetes-the-hard-way/cfssl/linux/cfssl
+    url: https://github.com/cloudflare/cfssl/releases/download/v1.5.0/cfssl_1.5.0_linux_amd64
+    dest: "{{ download_dir }}/cfssl"
+    mode: '0755'
+    owner: root
+    group: root
+  when: regi_cfssl.stat.exists == False
+
+- name: copy cfssl local_bin
+  copy:
+    src: "{{ download_dir }}/cfssl"
+    dest: /usr/local/bin/cfssl
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: check a exisiting cfssljson
+  stat:
+    path: "{{ download_dir }}/cfssljson"
+  register: regi_cfssl
+
+- name: downloading cfssljson
+  get_url:
+    #url: https://storage.googleapis.com/kubernetes-the-hard-way/cfssl/linux/cfssljson
+    url: https://github.com/cloudflare/cfssl/releases/download/v1.5.0/cfssljson_1.5.0_linux_amd64
+    dest: "{{ download_dir }}/cfssljson"
+    mode: '0755'
+    owner: root
+    group: root
+  when: regi_cfssl.stat.exists == False
+
+- name: copy cfssljson local_bin
+  copy:
+    src: "{{ download_dir }}/cfssljson"
+    dest: /usr/local/bin/cfssljson
+    owner: root
+    group: root
+    mode: '0755'
+
+
+
+

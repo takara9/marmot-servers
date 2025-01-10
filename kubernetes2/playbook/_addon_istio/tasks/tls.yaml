@@ -1,0 +1,69 @@
+- debug: msg="{{ ansible_facts.hostname }}"
+  
+#
+# CA用のディレクトリを作成
+#
+- name: mkdir for ISTIO CA
+  file:
+    path: "{{ cadmin_home }}/istio-ca"
+    state: directory
+    owner: "{{ cluster_admin }}"
+    group: "{{ cluster_admin }}"
+    mode: '0775'
+
+
+#
+# TLS証明書作成
+#
+- name: Existing check ca_{{ ext_domain }}.crt
+  stat:
+    path: "{{ cadmin_home }}/ca_{{ cluster_name }}.crt"
+  register: ca_crt
+
+- name: Create CA cert {{ ext_domain }}.crt 
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 -subj "/O={{ ext_domain }} /CN={{ ext_domain }}" -keyout ca_{{ cluster_name }}.key -out ca_{{ cluster_name }}.crt
+  args:
+    chdir: "{{ cadmin_home }}/istio-ca/"
+  when: ca_crt.stat.exists == False
+
+  
+
+- name: Existing check {{ ext_domain }}.csr
+  stat:
+    path: "{{ cadmin_home }}/{{ ext_domain }}.csr"
+  register: csr
+  
+- name: Create CSR 
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    openssl req -out {{ ext_domain }}.csr -newkey rsa:2048 -nodes -keyout {{ ext_domain }}.key -subj "/CN=istio-ingressgateway.istio-system.{{ cluster_name }}.{{ ext_domain }}/O={{ cluster_name }} organization"
+  args:
+    chdir: "{{ cadmin_home }}/istio-ca/"
+  when: csr.stat.exists == False
+
+
+  
+- name: Existing check {{ ext_domain }}.crt
+  stat:
+    path: "{{ cadmin_home }}/{{ ext_domain }}.crt"
+  register: crt
+  
+- name: Sign signature 
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    openssl x509 -req -days 365 -CA ca_{{ cluster_name }}.crt -CAkey ca_{{ cluster_name }}.key -set_serial 0 -in {{ ext_domain }}.csr -out {{ ext_domain }}.crt
+  args:
+    chdir: "{{ cadmin_home }}/istio-ca/"
+  when: crt.stat.exists == False
+
+  
+- name: kubectl create secret in istio-system
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl create -n istio-system secret tls istio-credential --key={{ ext_domain }}.key --cert={{ ext_domain }}.crt    
+  args:
+    chdir: "{{ cadmin_home }}/istio-ca/"    
+    
+

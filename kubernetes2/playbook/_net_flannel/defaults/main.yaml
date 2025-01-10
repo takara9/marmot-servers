@@ -1,0 +1,4 @@
+user_name :  vagrant
+flannel_version : v0.12.0
+cpu_arch  : amd64
+

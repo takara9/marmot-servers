@@ -1,0 +1,22 @@
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: fleet-server-tkr
+  namespace: elasticsearch
+spec:
+  version: 8.2.2
+  kibanaRef:
+    name: kibana-tkr
+  elasticsearchRefs:
+  - name: elasticsearch-tkr
+  mode: fleet
+  fleetServerEnabled: true
+  deployment:
+    replicas: 1
+    podTemplate:
+      spec:
+        serviceAccountName: fleet-server      
+        automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0
+

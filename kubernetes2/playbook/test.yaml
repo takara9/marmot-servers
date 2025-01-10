@@ -1,0 +1,37 @@
+#
+# ワーカーノードのセットアップ
+#
+- name: Configure Cluster Network
+  hosts:
+  - master1
+  gather_facts: yes
+  become: yes
+  tasks:
+  - include_vars:
+      dir: vars
+  #
+  # ロードバランサーコントローラーが、ノードのロールを見ているので設定が必須
+  #
+  - name: Set node role
+    become: true
+    become_user: "{{ cluster_admin }}"
+    shell: |
+      kubectl label node {{ item.name }} --overwrite=true node-role.kubernetes.io/worker=''
+      kubectl label node {{ item.name }} --overwrite=true role=worker-node
+    args:
+      chdir: "/home/{{ cluster_admin }}"
+    loop: "{{ nodes }}"
+
+#- name: test loop
+#  hosts: master1
+#  gather_facts: yes
+#  become: yes
+#  tasks:
+#  - include_vars:
+#      dir: vars
+#  #- debug: msg="loop = {{ nodes }}"#
+#
+#  - shell: echo "127.0.0.1	localhost" > /tmp/text-hosts
+#  - shell: echo "{{ item.pri_ip }}   {{ item.name }}" >> /tmp/text-hosts
+#    loop: "{{ nodes }}"
+

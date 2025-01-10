@@ -1,0 +1,4 @@
+# ノード設定ツールのインストール
+- include_tasks: dl_k8s_bin.yaml
+
+

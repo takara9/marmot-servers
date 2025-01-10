@@ -1,0 +1,126 @@
+#
+# Install Load Balancer Controller
+#
+- name: Install Ubuntu package
+  apt:
+    name: "{{ packages }}"
+    state: present
+  vars:
+    packages:
+    - python3
+    - python3-pip
+  register: apt_res
+  retries: 10
+  delay: 60
+  until: apt_res is success
+  when:
+    - ansible_facts.hostname is match("elb[12]")
+
+- name: install python3 module
+  shell: |
+    pip3 install kubernetes
+    pip3 install python-daemon
+  when:
+    - ansible_facts.hostname is match("elb[12]")
+
+
+# kubeconfigディレクトリ作成
+- name: mkdir kubeconfig
+  file:
+    path:  "/root/.kube"
+    state: directory
+    owner: root
+    group: root
+    mode:  '0755'
+
+- name: copy config to home dir
+  copy:
+    src: "{{ ca_kubeconfig }}/admin.kubeconfig_{{ cluster_name }}"
+    dest: /root/.kube/config
+    remote_src: yes
+    owner: root
+    group: root
+    mode:  '0600'
+  when:
+    - ansible_facts.hostname is match("elb[12]")
+
+
+- name: mkdir /etc/loadbalancer_controller
+  file:
+    path:  "/etc/loadbalancer_controller"
+    state: directory
+    owner: root
+    group: root
+    mode:  '0755'
+
+- name: copy config to /etc/loadbalancer_controller
+  copy:
+    src: "{{ ca_kubeconfig }}/admin.kubeconfig_{{ cluster_name }}"
+    dest: "/etc/loadbalancer_controller/config"
+    remote_src: yes
+    owner: root
+    group: root
+    mode:  '0600'
+  when:
+    - ansible_facts.hostname is match("elb[12]")
+
+
+- name: loadbalancer_controller systemd config
+  template:
+    src: loadbalancer_controller.service
+    dest: /etc/systemd/system/loadbalancer_controller.service
+    owner: root
+    group: root
+    mode: '0644'
+  when:
+    - ansible_facts.hostname is match("elb[12]")
+
+- name: install loadbalancer_controller to /usr/local/bin
+  template:
+    src: loadbalancer_controller
+    dest: /usr/local/bin/loadbalancer_controller
+    owner: root
+    group: root
+    mode: '0755'
+  when:
+    - ansible_facts.hostname is match("elb[12]")
+
+#
+# Keepalivedが切り替わった時に起動されるようにする
+#
+- name: copy /etc/keepalived/master.sh
+  template:
+    src: master.sh
+    dest: /etc/keepalived/master.sh
+    owner: root
+    group: root
+    mode: '0700'
+  when:
+    - ansible_facts.hostname is match("elb[12]")
+    - lb_pos == "Frontend"
+
+- name: copy /etc/keepalived/backup.sh
+  template:
+    src: backup.sh
+    dest: /etc/keepalived/backup.sh
+    owner: root
+    group: root
+    mode: '0700'
+  when:
+    - ansible_facts.hostname is match("elb[12]")
+    - lb_pos == "Frontend"
+
+
+#
+# enable loadbalancer_controller service
+#
+- name: enable and start a loadbalancer_controller
+  systemd:
+    name: loadbalancer_controller
+    state: started
+    #enabled: yes
+  when:
+    - ansible_facts.hostname is match("elb1")
+
+
+

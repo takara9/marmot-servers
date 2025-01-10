@@ -1,0 +1,269 @@
+#
+# Kubernetesクラスタ構成ファイル
+#
+### VM Host network interfaice
+#bridge_if: "en0: Wi-Fi (Wireless)"
+#bridge_if: "eno1"
+
+## Hypervisor type
+##  kvm : CentOS8 virsh
+##  vv  : VirtualBox + Vagrant
+hypervisor: kvm
+#hypervisor: vv
+
+### Container Runtime
+container_runtime:  containerd
+containerd_version: "1.2.13"
+#
+#container_runtime:  docker
+#docker_version:     "5:18.09.9~3-0~ubuntu-bionic"
+#
+#container_runtime:  cri-o
+#crio_version:       "1.17"
+#
+crictl_version:     "v1.15.0"
+
+### K8s cluster/pod network CNI plugin
+cni_plugins:        "v0.8.2"
+#pod_network: bridge
+#
+#pod_network: flannel
+#flannel_version: v0.12.0
+#
+pod_network: calico
+calico_version: v3.14.1
+
+
+### Kubernetes version
+kubernetes_version: 1.18.12
+kubernetes_custom: False
+kubernetes_dashborad_ver: v2.0.0
+
+### Cluster Network
+private_ip_subnet: 172.16.20.0/24
+public_ip_subnet:  192.168.1.0/24
+
+### Network device and config
+#net_dev_default: enp1s0
+#net_dev_private: enp2s0
+#net_dev_public:  enp3s0
+net_dev_default: ens2
+net_dev_private: ens3
+net_dev_public:  ens4
+
+### netplan param for elb1/elb2
+public_ip_gw: 192.168.1.1
+public_ip_dns: 192.168.1.241
+
+
+### Load Balancer config
+keepalived_version: 2.0.15
+
+### Internal Load Balancer
+kube_apiserver_vip: 172.16.20.54
+ka_primary_internal_host: mlb1
+ka_backup_internal_host: mlb2
+
+### Frontend Load Balancer
+front_proxy_vip: 192.168.1.57
+#istio_gateway_vip: 192.168.1.64
+ka_primary_frontend_host: elb1
+ka_backup_frontend_host: elb2
+
+lb_vip_start: 192.168.1.180
+lb_vip_range: 20
+
+
+### extra addons
+sw_rook_ceph:    True
+sw_promethus:    True
+sw_grafana:      True
+sw_elk:          True
+sw_istio:        True
+sw_knative:      True
+sw_container_fs: True
+
+
+### DOMAIN
+cluster_name: k8s2
+domain: cluster.local
+ext_domain: k8s2.labo.local
+
+
+### Master, Worker, Internal/Frontend Loadbalancer and bootnode
+vm_spec:
+  - name: "master1"
+    cpu: 2
+    memory: 2048
+    private_ip: "172.16.20.51"
+    storage:
+    - 16
+    playbook: "setup_linux.yaml"
+    comment: "Master node #1"
+    
+  - name: "master2"
+    cpu: 2
+    memory: 2048
+    private_ip: "172.16.20.52"
+    storage:
+    - 16
+    playbook: "setup_linux.yaml"
+    comment: "Master node #2"
+    
+  - name: "master3"
+    cpu: 2
+    memory: 2048
+    private_ip: "172.16.20.53"
+    storage:
+    - 16      
+    playbook: "setup_linux.yaml"
+    comment: "Master node #3"
+  
+  - name: "mlb1"
+    cpu: 1
+    memory: 2048
+    private_ip: "172.16.20.55"
+    storage:
+    playbook: "setup_linux.yaml"
+    comment: "Internal Master Loadbalancer #1"
+
+  - name: "mlb2"
+    cpu: 1
+    memory: 2048
+    private_ip: "172.16.20.56"
+    storage:
+    playbook: "setup_linux.yaml"
+    comment: "Internal Master Loadbalancer #2"
+
+  - name: "elb1"
+    cpu: 1
+    memory: 2048
+    private_ip: "172.16.20.58"
+    public_ip: "192.168.1.58"
+    storage:
+    - 8
+    role: "proxy"      
+    playbook: "setup_linux.yaml"
+    comment: "Frontend Master Loadbalancer #1"
+
+  - name: "elb2"
+    cpu: 1
+    memory: 2048
+    private_ip: "172.16.20.59"
+    public_ip: "192.168.1.59"
+    storage:
+    - 8
+    role: "proxy"      
+    playbook: "setup_linux.yaml"
+    comment: "Frontend Backup Loadbalancer #2"
+
+
+  - name: "node1"
+    cpu: 2
+    memory: 8192
+    private_ip: "172.16.20.61"
+    storage:
+    - 16
+    playbook: "setup_linux.yaml"
+    role: "worker"
+    comment:  "Worker node #1"
+    
+  - name: "node2"
+    cpu: 2
+    memory: 8192
+    private_ip: "172.16.20.62"
+    storage:
+    - 16
+    playbook: "setup_linux.yaml"
+    role: "worker"    
+    comment: "Worker node #2"
+    
+  - name: "node3"
+    cpu: 2
+    memory: 8192
+    private_ip: "172.16.20.63"
+    storage:
+    - 16
+    playbook: "setup_linux.yaml"
+    role: "worker"
+    comment: "Worker node #3"
+
+  - name: "node4"
+    cpu: 2
+    memory: 8192
+    private_ip: "172.16.20.64"
+    storage:
+    - 16
+    playbook: "setup_linux.yaml"
+    role: "worker"
+    comment: "Worker node #4"
+
+  - name: "node5"
+    cpu: 2
+    memory: 8192
+    private_ip: "172.16.20.65"
+    storage:
+    - 16
+    playbook: "setup_linux.yaml"
+    role: "worker"
+    comment: "Worker node #5"
+
+  - name: "storage1"
+    cpu: 2
+    memory: 8192
+    private_ip: "172.16.20.66"
+    storage:
+    - 16
+    - 100
+    playbook: "setup_linux.yaml"
+    role: "storage"
+    node_label:
+    - app: rook-ceph-mds
+    comment: "Storage node #1"
+
+  - name: "storage2"
+    cpu: 2
+    memory: 8192
+    private_ip: "172.16.20.67"
+    storage:
+    - 16
+    - 100
+    playbook: "setup_linux.yaml"
+    role: "storage"
+    node_label:
+    - app: rook-ceph-mds
+    comment: "Storage node #2"
+
+  - name: "storage3"
+    cpu: 2
+    memory: 8192
+    private_ip: "172.16.20.68"
+    storage:
+    - 16
+    - 100
+    playbook: "setup_linux.yaml"
+    role: "storage" 
+    node_label:
+    - app: rook-ceph-mds
+    comment: "Storage node #3"
+
+  - name: "storage4"
+    cpu: 2
+    memory: 8192
+    private_ip: "172.16.20.69"
+    storage:
+    - 16
+    - 100
+    playbook: "setup_linux.yaml"
+    role: "storage" 
+    node_label:
+    - app: rook-ceph-mds
+    comment: "Storage node #4"
+
+  - name: "bootnode"
+    cpu: 2
+    memory: 2048
+    private_ip: "172.16.20.50"
+    playbook: "setup_linux.yaml"    
+    comment: "Bootstap node" 
+    

@@ -1,0 +1,18 @@
+#
+# server for code development
+#
+domain: labo.local
+os_variant:  ubuntu22.04
+
+cluster_name: dev
+vm_spec:
+  - name: "cgroup-test"
+    cpu: 1
+    memory: 4096
+    private_ip: "172.16.99.12"
+    storage:
+    - name: /dev/vdb
+      size: 10
+      vg:   vg1
+    playbook: install.yaml
+    comment: "Cgroup Test node"

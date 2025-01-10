@@ -1,0 +1,49 @@
+[all:vars]
+
+work_dir         =  /nfs
+download_dir     = {{ work_dir }}/download
+ca_home2         = {{ work_dir }}/ca
+ca_etcd_home     = {{ work_dir }}/ca-etcd
+ca_front_proxy   = {{ work_dir }}/ca-front-proxy
+ca_kubeconfig    = {{ work_dir }}/kubeconfig
+cadmin_home      = {{ work_dir }}/yaml
+
+
+iface_pri        = enp6s0
+iface_pub        = enp7s0
+
+
+# KEEPALIVED_CONFIG INTERNAL
+# API SERVER VIP
+kube_apiserver_vip     = "172.16.3.21/24"
+ka_primary_internal_ip =
+ka_backup_internal_ip  =
+
+# KEEPALIVED_CONFIG FRONTEND
+front_proxy_vip        = "192.168.1.182/24"
+front_proxy_vip_nomask = "192.168.1.182"
+ka_primary_frontend_ip = "192.168.1.181/32"
+ka_backup_frontend_ip  =
+lb_vip_start           = "192.168.1.183"
+lb_vip_range           = 20
+
+
+cluster_admin            = ubuntu
+
+public_ip_dns            = "172.16.0.8"
+kubernetes_version       = "1.24.12"
+kubernetes_dashborad_ver = "v2.5.1"
+go_version               = "1.18.2"
+docker_version           = "5:19.03.12~3-0~ubuntu-focal"
+cni_plugins              = "v0.9.0"
+containerd_version       = "1.5.9"
+crictl_version           = "v1.15.0"
+runc_version             = "v1.0.0"
+coredns_ver              = "1.8.0"
+keepalived_version       = "2.0.15"
+flannel_version          = "v0.12.0"
+
+ext_domain               = "k8s3.labo.local"
+cluster_name             = "k8s3"
+domain                   = "cluster.local"
+

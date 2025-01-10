@@ -1,0 +1,15 @@
+spec:
+  ports:
+  - appProtocol: http
+    name: http
+    nodePort: 31080
+    port: 80
+    protocol: TCP
+    targetPort: http
+  - appProtocol: https
+    name: https
+    nodePort: 31433
+    port: 443
+    protocol: TCP
+    targetPort: https
+  type: LoadBalancer

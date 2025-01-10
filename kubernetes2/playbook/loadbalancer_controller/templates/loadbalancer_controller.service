@@ -1,0 +1,24 @@
+[Unit]
+Description=Kubernetes Load Balancer Controller
+Documentation=https://github.com/takara9/rat-k8s
+After=keepalived.service haproxy.service
+#Requires=keepalived.service haproxy.service
+
+[Service]
+Environment="KUBECONFIG=/root/.kube/config"
+
+ExecStart=/usr/local/bin/loadbalancer_controller \
+ --daemon=yes \
+ --default-vip={{ front_proxy_vip }} \
+ --lb-start-vip={{ lb_vip_start }} \
+ --lb-range-vip={{ lb_vip_range }} \
+ --network-device={{ iface_pub }} \
+ --k8s-cluster-domain={{ cluster_name }} \
+ --k8s-conf=/etc/loadbalancer_controller/config
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+

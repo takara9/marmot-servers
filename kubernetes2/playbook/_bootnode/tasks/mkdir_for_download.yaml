@@ -1,0 +1,51 @@
+#
+# mkdir directory for kubernetes
+#
+
+- name: mkdir for download
+  file:
+    path: "{{ work_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0775'
+
+- name: mkdir for k8s bin
+  file:
+    path: "{{ work_dir }}/bin"
+    state: directory
+    owner: root
+    group: root
+    mode: '0775'
+
+- name: mkdir for ssh keys
+  file:
+    path: "{{ work_dir }}/keys"
+    state: directory
+    owner: root
+    group: root
+    mode: '0775'
+
+- name: mkdir kubeconfig
+  file:
+    path: "{{ ca_kubeconfig }}"
+    state: directory
+    owner: root
+    group: root
+    mode:  '0775'
+
+- name: mkdir download
+  file:
+    path: "{{ download_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode:  '0775'
+
+- name: mkdir for admin
+  file:
+    path: "{{ cadmin_home }}"
+    state: directory
+    owner: "{{ cluster_admin }}"
+    group: "{{ cluster_admin }}"
+    mode: '0775'

@@ -1,0 +1,24 @@
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: elastic-agent-tkr
+  namespace: elasticsearch
+spec:
+  version: 8.2.2
+  kibanaRef:
+    name: kibana-tkr
+  fleetServerRef:
+    name: fleet-server-tkr
+  mode: fleet
+  daemonSet:
+    podTemplate:
+      spec:
+        tolerations:
+         - key: node-role.kubernetes.io/master
+           effect: NoSchedule
+        serviceAccountName: elastic-agent
+        automountServiceAccountToken: true
+        hostNetwork: true
+        dnsPolicy: ClusterFirstWithHostNet
+        securityContext:
+          runAsUser: 0

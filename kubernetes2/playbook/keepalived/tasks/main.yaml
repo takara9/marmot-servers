@@ -1,0 +1,31 @@
+#
+# Keepalivedのビルドのためのパッケージ導入
+#
+- name: Install Ubuntu package
+  apt:
+    name: "{{ packages }}"
+    state: present
+  vars:
+    packages:
+    - libssl-dev
+    - build-essential
+
+
+#
+# 必要なコードのダウンロード
+#
+- include_tasks: dl_keepalived.yaml
+  #when:
+  #  - ansible_facts.hostname is match(download_node)
+
+
+#
+# インストール
+#
+- include_tasks: install_keepalived.yaml
+  #when:
+  #  - ansible_facts.hostname is not match(download_node)
+
+
+
+

@@ -1,0 +1,60 @@
+#
+# Kubernetesのデーモン用
+#
+#- debug: msg="{{ ansible_facts }}"
+
+- name: Create kubernetes directorys
+  file:
+    path: /var/lib/kubernetes
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+- file:
+    path: /etc/kubernetes
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+- file:
+    path: /etc/kubernetes/config
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+- file:
+    path: /etc/kubernetes/pki
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+- file:
+    path: /etc/kubernetes/pki/etcd
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+- file:
+    path: /etc/kubernetes/pki/manifests
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+#
+# CNI用ディレクトリ作成
+#
+- name: start configuration  
+  file:
+    path: /etc/cni/net.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+- file:
+    path: /opt/cni/bin
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+

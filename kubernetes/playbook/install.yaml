@@ -18,7 +18,7 @@
 #
 # マスターノードのセットアップ
 #
-- name: Configure etcd on masters
+- name: Configure control plane
   hosts:
   - masters
   gather_facts: yes
@@ -60,20 +60,20 @@
         chdir: "/home/{{ cluster_admin }}"
       loop: "{{ nodes }}"
 
-#
-# masterクラスタのための内部LBの構築
-#
-#- name: Setup the internal LoadBalancer
-#  hosts:
-#  - mlb1
-#  - mlb2
-#  vars:
-#  - lb_pos: "Internal"
-#  gather_facts: yes
-#  become: yes
-#  roles:
-#    - haproxy
-#    - keepalived
+##
+## masterクラスタのための内部LBの構築
+##
+##- name: Setup the internal LoadBalancer
+##  hosts:
+##  - mlb1
+##  - mlb2
+##  vars:
+##  - lb_pos: "Internal"
+##  gather_facts: yes
+##  become: yes
+##  roles:
+##    - haproxy
+##    - keepalived
 
 #
 # 外部リクエストをk8sクラスタ内へ導く外部LBを設定
@@ -101,5 +101,5 @@
     - addon_metrics-server
     - addon_helm3
     - addon_ingress
-    - addon_dashboard
+    #- addon_dashboard
 

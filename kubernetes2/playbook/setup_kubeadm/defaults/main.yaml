@@ -1,0 +1,8 @@
+#work_dir :       "/k8s"
+#download_dir :   "{{ work_dir }}/download"
+#r_download_dir:  "{{ work_dir }}"
+#cni_plugins:     "v0.9.0"
+#containerd_version: "1.5.9"
+#crictl_version:  "v1.15.0"
+#runc_version:    "v1.0.0"
+#public_ip_dns:   "192.168.1.8"

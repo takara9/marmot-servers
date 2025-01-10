@@ -1,0 +1,58 @@
+- debug: msg="{{ ansible_facts.hostname }}"
+  
+#
+# CA用のディレクトリを作成
+#
+- name: mkdir for ISTIO CA
+  file:
+    path: "{{ cadmin_home }}/istio-ca"
+    state: directory
+    owner: "{{ cluster_admin }}"
+    group: "{{ cluster_admin }}"
+    mode: '0775'
+
+
+# Istio Ingress-Gateway #1
+# TLS証明書作成
+#
+- name: Download Web-Site SSL Certs #1
+  get_url:
+    url:  "https://{{ ca_ip }}/igw1.{{ ext_domain }}/igw1.{{ ext_domain }}.crt"
+    dest: "{{ cadmin_home }}/istio-ca/igw1.{{ ext_domain }}.crt"
+    validate_certs: no
+    mode: 0440
+- get_url:
+    url:  "https://{{ ca_ip }}/igw1.{{ ext_domain }}/igw1.{{ ext_domain }}.key"
+    dest: "{{ cadmin_home }}/istio-ca/igw1.{{ ext_domain }}.key"   
+    validate_certs: no
+    mode: 0440
+- name: kubectl create secret in istio-system
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl create -n istio-system secret tls istio-credential --key=igw1.{{ ext_domain }}.key --cert=igw1.{{ ext_domain }}.crt    
+  args:
+    chdir: "{{ cadmin_home }}/istio-ca/"    
+
+
+
+# Istio Ingress-Gateway #2
+# TLS証明書作成
+#
+- name: Download Web-Site SSL Certs #2
+  get_url:
+    url:  "https://{{ ca_ip }}/igw2.{{ ext_domain }}/igw2.{{ ext_domain }}.crt"
+    dest: "{{ cadmin_home }}/istio-ca/igw2.{{ ext_domain }}.crt"
+    validate_certs: no
+    mode: 0440
+- get_url:
+    url:  "https://{{ ca_ip }}/igw2.{{ ext_domain }}/igw2.{{ ext_domain }}.key"
+    dest: "{{ cadmin_home }}/istio-ca/igw2.{{ ext_domain }}.key"   
+    validate_certs: no
+    mode: 0440
+- name: kubectl create secret in istio-system #2
+  become_user: "{{ cluster_admin }}"
+  shell: |
+    kubectl create -n istio-system secret tls istio-credential2 --key=igw2.{{ ext_domain }}.key --cert=igw2.{{ ext_domain }}.crt    
+  args:
+    chdir: "{{ cadmin_home }}/istio-ca/"    
+

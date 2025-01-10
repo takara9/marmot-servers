@@ -1,0 +1,64 @@
+#
+# CoreDNSのインストール
+#
+- name: Install coredns 
+  unarchive:
+    src: "{{ download_dir }}/coredns_{{ coredns_ver }}_linux_amd64.tgz"
+    dest: /usr/local/bin
+    remote_src: True
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: copy coredns.service
+  template:
+    src: coredns.service.j2
+    dest: /etc/systemd/system/coredns.service
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Create CoreDNS Directory
+  file:
+    path:  /coredns
+    state: directory
+    owner: root
+    group: root
+
+- name: copy Corefile
+  template:
+    src: Corefile
+    dest: /coredns/Corefile
+    owner: root
+    group: root
+    mode: '0644'
+    
+- name: copy zone file labs.db
+  template:
+    src: labs.db
+    dest: "/coredns/{{ cluster_name }}.db"
+    owner: root
+    group: root
+    mode: '0644'
+    
+- name: Stop dns proxy
+  systemd:
+    name: systemd-resolved
+    state: stopped
+    enabled: no
+    
+- name: set resolv.conf
+  template:
+    src: resolv.conf
+    dest: /etc/resolv.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Start Coredns deamons
+  systemd:
+    name: coredns
+    state: started
+    daemon_reload: yes
+    enabled: yes
+

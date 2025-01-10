@@ -1,0 +1,21 @@
+#
+# CRICTL
+#
+- name: install crictl
+  unarchive:
+    src: "{{ r_download_dir }}/crictl-{{ crictl_version }}-linux-amd64.tar.gz"
+    dest: /usr/local/bin/
+    remote_src: True
+    owner: root
+    group: root
+    mode: '0755'
+    
+- template:
+    src: crictl.yaml
+    dest: /etc/crictl.yaml
+    owner: root
+    group: root
+    mode: '0644'
+
+
+
