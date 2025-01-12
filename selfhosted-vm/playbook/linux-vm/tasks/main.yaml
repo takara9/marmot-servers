@@ -1,0 +1,32 @@
+#
+# パッケージの追加
+#
+- name: Update apt-get repo and cache
+  apt: update_cache=yes force_apt_get=yes cache_valid_time=3600
+
+- name: Install Ubuntu package
+  ansible.builtin.apt:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+  register: apt_res
+  retries: 10
+  delay: 60
+  until: apt_res is success
+  vars:
+    packages:
+    - git
+    - curl
+    - gcc
+    - make
+    - kpartx
+    - virt-top
+    - virt-manager
+    - libvirt-dev
+    - libvirt-clients
+    - libvirt-daemon
+    - qemu-kvm 
+    - qemu
+    - openvswitch-switch
+    - openvswitch-common
+    - openvswitch-doc

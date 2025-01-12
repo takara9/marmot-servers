@@ -1,0 +1,61 @@
+#
+# 自動設定のタスクを記述する。
+#
+
+- debug: msg="{{ ansible_facts.hostname }}"
+- debug: msg="{{ ansible_facts }}"
+
+- name: "Create vg1 on top of /dev/vdc"
+  lvg:
+    vg: vg1
+    pvs: /dev/vdc
+
+- name: "Create vg2 on top of /dev/vdd"
+  lvg:
+    vg: vg2
+    pvs: /dev/vdd
+
+#- name: "Create vg3 on top of /dev/vde"
+#  lvg:
+#    vg: vg3
+#    pvs: /dev/vde
+
+- name: git clone marmot
+  ansible.builtin.git:
+    repo: https://github.com/takara9/marmot.git
+    dest: /root/marmot
+
+- name: Install etcd
+  apt:
+    name: etcd
+    state: present
+
+- name: Build marmot
+  shell: |
+    PATH="$PATH:/usr/local/go/bin"
+    make all
+  args:
+    executable: /bin/bash
+    chdir: /root/marmot
+
+- name: Install marmot
+  shell: |
+    PATH="$PATH:/usr/local/go/bin"
+    make install
+  args:
+    executable: /bin/bash
+    chdir: /root/marmot
+
+- name: Put config of marmot server
+  ansible.builtin.template:
+    src: config_marmot.j2
+    dest: /root/.config_marmot
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Make sure a service unit is running
+  systemd:
+    state: started
+    name: marmot.service
+

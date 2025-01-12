@@ -1,8 +1,8 @@
 # Generate by mactl gen-inv
-elb1  ansible_ssh_host=172.16.2.11  ansible_ssh_private_key_file=~/.ssh/id_rsa  ansible_ssh_user=root
-master1  ansible_ssh_host=172.16.2.21  ansible_ssh_private_key_file=~/.ssh/id_rsa  ansible_ssh_user=root
-node1  ansible_ssh_host=172.16.2.31  ansible_ssh_private_key_file=~/.ssh/id_rsa  ansible_ssh_user=root
-node2  ansible_ssh_host=172.16.2.32  ansible_ssh_private_key_file=~/.ssh/id_rsa  ansible_ssh_user=root
+elb1  ansible_ssh_host=172.16.3.11  ansible_ssh_private_key_file=~/.ssh/id_rsa  ansible_ssh_user=root
+master1  ansible_ssh_host=172.16.3.21  ansible_ssh_private_key_file=~/.ssh/id_rsa  ansible_ssh_user=root
+node1  ansible_ssh_host=172.16.3.31  ansible_ssh_private_key_file=~/.ssh/id_rsa  ansible_ssh_user=root
+node2  ansible_ssh_host=172.16.3.32  ansible_ssh_private_key_file=~/.ssh/id_rsa  ansible_ssh_user=root
 
 [masters]
 master[1:1]
@@ -31,16 +31,16 @@ iface_pub        = enp7s0
 
 # KEEPALIVED_CONFIG INTERNAL
 # API SERVER VIP
-kube_apiserver_vip     = "172.16.2.21/24"
+kube_apiserver_vip     = "172.16.3.21/24"
 ka_primary_internal_ip =
 ka_backup_internal_ip  =
 
 # KEEPALIVED_CONFIG FRONTEND
-front_proxy_vip        = "192.168.1.152/24"
-front_proxy_vip_nomask = "192.168.1.152"
-ka_primary_frontend_ip = "192.168.1.151/32"
+front_proxy_vip        = "192.168.1.182/24"
+front_proxy_vip_nomask = "192.168.1.182"
+ka_primary_frontend_ip = "192.168.1.181/32"
 ka_backup_frontend_ip  =
-lb_vip_start           = "192.168.1.153"
+lb_vip_start           = "192.168.1.183"
 lb_vip_range           = 20
 
 
@@ -61,7 +61,7 @@ coredns_ver              = "1.8.0"
 keepalived_version       = "2.0.15"
 flannel_version          = "v0.12.0"
 
-ext_domain               = "k8s2.labo.local"
-cluster_name             = "k8s2"
+ext_domain               = "k8s3.labo.local"
+cluster_name             = "k8s3"
 domain                   = "cluster.local"
 

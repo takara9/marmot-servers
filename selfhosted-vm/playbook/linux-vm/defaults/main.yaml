@@ -1,0 +1,3 @@
+# 変数のデフォルト
+#public_ip_dns: 172.16.0.8
+#cluster_admin: ubuntu
