@@ -5,6 +5,12 @@
 - debug: msg="{{ ansible_facts.hostname }}"
 - debug: msg="{{ ansible_facts }}"
 
+- name: Route add -net
+  shell: |
+    route add -net 10.0.0.0/8 gw 172.16.0.1
+  args:
+    executable: /bin/bash
+
 - name: "Create vg1 on top of /dev/vdc"
   lvg:
     vg: vg1
@@ -46,7 +52,7 @@
     executable: /bin/bash
     chdir: /root/marmot
 
-- name: Put config of marmot server
+- name: Put config of marmot server for root
   ansible.builtin.template:
     src: config_marmot.j2
     dest: /root/.config_marmot
@@ -54,8 +60,58 @@
     group: root
     mode: '0644'
 
-- name: Make sure a service unit is running
-  systemd:
-    state: started
-    name: marmot.service
+- name: Put config of marmot server for ubuntu user
+  ansible.builtin.template:
+    src: config_marmot.j2
+    dest: /home/ubuntu/.config_marmot
+    owner: ubuntu
+    group: ubuntu
+    mode: '0644'
+  
+#- name: Make sure a service unit is running
+#  systemd:
+#    name: marmot.service
+#    enabled: yes    
 
+- name: Create LV for OS image
+  shell: |
+    lvcreate -n lv01 -L 16G vg1
+  args:
+    executable: /bin/bash
+
+- name: Verify LV for OS image
+  shell: |
+    lvdisplay vg1/lv01
+  args:
+    executable: /bin/bash
+
+- name: Download Ubunt 22.04 image
+  shell: |
+    curl --output /dev/vg1/lv01 http://10.1.0.12:9000/os-image/lv03.img
+  args:
+    executable: /bin/bash
+
+- name: mkdir /etc/marmot
+  file:
+    path: /etc/marmot
+    owner: root
+    group: root
+    mode: '0755'
+    state: directory
+
+
+- name: Put config of marmot server for root
+  ansible.builtin.template:
+    src: hv-config-ci.yaml.j2
+    dest: /etc/marmot/hv-config-ci.yaml
+    owner: root
+    group: root
+    mode: '0644'
+
+
+- name: Setup marmot-server by test data
+  shell: |
+    hv-admin -config hv-config-ci.yaml 
+  args:
+    executable: /bin/bash
+    chdir: /etc/marmot

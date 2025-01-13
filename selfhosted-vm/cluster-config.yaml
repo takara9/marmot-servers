@@ -6,10 +6,11 @@ os_variant:  ubuntu22.04
 
 cluster_name: dev
 vm_spec:
-  - name: "ci-runner"
-    cpu: 2
-    memory: 4096
+  - name: "hvc"
+    cpu: 4
+    memory: 16384
     private_ip: "172.16.0.20"
+    public_ip:  "192.168.1.220"
     storage:
     - name: /dev/vdb
       size: 100
