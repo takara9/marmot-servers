@@ -68,10 +68,11 @@
     group: ubuntu
     mode: '0644'
   
-#- name: Make sure a service unit is running
-#  systemd:
-#    name: marmot.service
-#    enabled: yes    
+- name: Make sure a service unit is running
+  systemd:
+    name: marmot.service
+    state: started
+    enabled: yes
 
 - name: Create LV for OS image
   shell: |
