@@ -1,0 +1,6 @@
+- name: OS環境設定
+  hosts: all
+  gather_facts: yes
+  become: yes
+  roles:
+    - linux-setup

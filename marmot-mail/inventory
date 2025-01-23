@@ -1,0 +1,21 @@
+###
+### ノードのリストとアクセス方法
+###
+
+# for KVM
+mail      ansible_ssh_host=172.16.0.221  ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_user=root
+
+
+###
+### プレイブックに与える変数
+###
+[all:vars]
+
+# Sample 変数
+base_dir = "/home/ubuntu/"
+
+# Mail ドメイン
+mail_domain = "labo.local"
+
+
+

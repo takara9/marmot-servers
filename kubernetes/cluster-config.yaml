@@ -4,7 +4,7 @@
 
 domain: labo.local
 os_variant:  ubuntu22.04
-cluster_name: k8s4
+cluster_name: k8s2
 
 vm_spec:
   - name: "elb1"

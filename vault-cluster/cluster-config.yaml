@@ -1,0 +1,41 @@
+#
+# Kubernetesクラスタの構成
+#
+
+domain: labo.local
+os_variant:  ubuntu22.04
+cluster_name: vault
+
+vm_spec:
+  - name: "node1"
+    cpu: 2
+    memory: 8192
+    private_ip: "172.16.31.11"
+    storage:
+    - name: vault-store1
+      size: 5
+      vg:   vg2
+    playbook: install.yaml
+    comment:  "node #1"
+
+  - name: "node2"
+    cpu: 2
+    memory: 8192
+    private_ip: "172.16.31.12"
+    storage:
+    - name: vault-store1
+      size: 5
+      vg:   vg2
+    playbook: install.yaml
+    comment:  "node #2"
+
+  - name: "node3"
+    cpu: 2
+    memory: 8192
+    private_ip: "172.16.31.13"
+    storage:
+    - name: vault-store1
+      size: 5
+      vg:   vg2
+    playbook: install.yaml
+    comment:  "node #3"
