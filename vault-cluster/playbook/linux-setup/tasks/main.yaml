@@ -72,6 +72,8 @@
     - nfs-common
     - nfs-client
     - emacs-nox
+    - jq
+    - unzip
 
 #
 # カーネル設定変更

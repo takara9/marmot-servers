@@ -1,0 +1,145 @@
+# etcd の設定
+#
+- name: "環境表示"
+  debug: msg="{{ ansible_facts.hostname }}"
+
+- name: "グループの追加"
+  group:
+    name: etcd
+    gid: 1200
+    system: true
+
+- name: "ユーザーの追加"
+  user:
+    name: etcd
+    create_home: false
+    group: etcd
+    uid: 1200
+    system: true
+
+- name: "etcd 証明書ファイルの保存用ディレクトリの作成"
+  file:
+    path: /etc/etcd
+    state: directory
+    owner: etcd
+    group: etcd
+    mode: '0755'
+
+- name: "etcd データディレクトリの作成"
+  file:
+    path: /var/etcd-data
+    state: directory
+    owner: etcd
+    group: etcd
+    mode: '0755'
+
+- name: "CA証明書の配置"
+  template:
+    src: ca.pem
+    dest: /etc/etcd
+    owner: etcd
+    group: etcd 
+    mode: '0644'
+
+- name: "CA鍵の配置"
+  template:
+    src: ca-key.pem
+    dest: /etc/etcd
+    owner: etcd
+    group: etcd 
+    mode: '0600'
+
+- name: "サーバー証明書の配置"
+  template:
+    src: "etcd-{{ ansible_facts.hostname }}.pem"
+    dest: "/etc/etcd/etcd-{{ ansible_facts.hostname }}.pem"
+    owner: etcd
+    group: etcd 
+    mode: '0644'
+
+- name: "サーバー鍵の配置"
+  template:
+    src: "etcd-{{ ansible_facts.hostname }}-key.pem"
+    dest: "/etc/etcd/etcd-{{ ansible_facts.hostname }}-key.pem"
+    owner: etcd
+    group: etcd 
+    mode: '0644'
+
+- name: "ピア証明書の配置"
+  template:
+    src: "peer-etcd-{{ ansible_facts.hostname }}.pem"
+    dest: "/etc/etcd/peer-etcd-{{ ansible_facts.hostname }}.pem"
+    owner: etcd
+    group: etcd 
+    mode: '0644'
+
+- name: "ピア鍵の配置"
+  template:
+    src: "peer-etcd-{{ ansible_facts.hostname }}-key.pem"
+    dest: "/etc/etcd/peer-etcd-{{ ansible_facts.hostname }}-key.pem"
+    owner: etcd
+    group: etcd 
+    mode: '0644'
+
+- name: systemd Unitファイルの配置
+  template:
+    src: "etcd.service.j2"
+    dest: "/lib/systemd/system/etcd.service"
+    owner: root
+    group: root 
+    mode: '0644'
+
+- name: etcdのプレビルドバイナリをダウンロード
+  get_url:
+    url:  https://github.com/etcd-io/etcd/releases/download/v3.5.18/etcd-v3.5.18-linux-amd64.tar.gz
+    dest: /tmp
+    mode: 0440
+
+- name: tar ファイルを展開
+  unarchive:
+    src:  "/tmp/etcd-v3.5.18-linux-amd64.tar.gz"
+    dest: "/tmp"
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+
+- name: "/tmp/etcd-v3.5.18-linux-amd64.tar.gzクリーンナップ"
+  file:
+    path: /tmp/etcd-v3.5.18-linux-amd64.tar.gz
+    state: absent
+
+
+- name: Copy etcd
+  copy:
+    src: "/tmp/etcd-v3.5.18-linux-amd64/etcd"
+    dest: "/usr/local/bin/etcd"
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: true
+
+- name: Copy etcdctl
+  copy:
+    src: "/tmp/etcd-v3.5.18-linux-amd64/etcdctl"
+    dest: "/usr/local/bin/etcdctl"
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: true
+
+- name: Copy etcd
+  copy:
+    src: "/tmp/etcd-v3.5.18-linux-amd64/etcdutl"
+    dest: "/usr/local/bin/etcdutl"
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: true
+
+- name: Start etcd
+  systemd:
+    name: etcd
+    state: started
+    daemon_reload: yes
+    enabled: yes

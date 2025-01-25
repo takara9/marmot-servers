@@ -8,7 +8,7 @@
 
 - name: mount network share
   mount:
-    src:  "hmc-nfs:/exports/k8s"
+    src:  "hmc-nfs:/exports/nfs"
     path: "/nfs"
     fstype: nfs
     state: mounted

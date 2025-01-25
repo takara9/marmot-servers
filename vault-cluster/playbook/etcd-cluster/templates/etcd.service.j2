@@ -1,0 +1,36 @@
+# /lib/systemd/system/etcd.service
+[Unit]
+Description=etcd - highly-available key value store
+Documentation=https://etcd.io/docs
+Documentation=man:etcd
+After=network.target
+Wants=network-online.target
+
+[Service]
+#Environment=ETCD_NAME=%H
+Type=notify
+User=etcd
+PermissionsStartOnly=true
+ExecStart=/usr/local/bin/etcd \
+  --name {{ ansible_facts.hostname }} \
+  --data-dir /var/etcd-data \
+  --client-cert-auth \
+  --trusted-ca-file /etc/etcd/ca.pem \
+  --cert-file /etc/etcd/etcd-{{ ansible_facts.hostname }}.pem \
+  --key-file /etc/etcd/etcd-{{ ansible_facts.hostname }}-key.pem \
+  --advertise-client-urls https://0.0.0.0:2379 \
+  --listen-peer-urls https://{{ ansible_facts.all_ipv4_addresses[0] }}:2380 \
+  --listen-client-urls https://0.0.0.0:2379 \
+  --initial-advertise-peer-urls https://{{ ansible_facts.all_ipv4_addresses[0] }}:2380 \
+  --initial-cluster "node1=https://172.16.31.11:2380,node2=https://172.16.31.12:2380,node3=https://172.16.31.13:2380" \
+  --initial-cluster-state new \
+  --peer-client-cert-auth \
+  --peer-trusted-ca-file /etc/etcd/ca.pem \
+  --peer-cert-file /etc/etcd/peer-etcd-{{ ansible_facts.hostname }}.pem \
+  --peer-key-file /etc/etcd/peer-etcd-{{ ansible_facts.hostname }}-key.pem
+Restart=on-abnormal
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+Alias=etcd3.service
