@@ -186,13 +186,13 @@ danielle-vault-userのパスワードを送り、danielle-vault-userのトーク
 ```
 ubuntu@node1:~$ curl -k -s -X POST -d '{ "password": "Imprint Bacteria Marathon Aflutter" }' \
 $VAULT_ADDR/v1/auth/userpass/login/danielle-vault-user | jq ".auth.client_token"
-"hvs.CAESICug7qsv905D5Pay0hVRYHpI2ehuVW1_wWIF1Jn0HuzXGh4KHGh2cy4wZkNOUXg0RmsycGdQUzF5TGNvR1BzUWI"
+"hvs.*******************************************************************************************"
 ```
 
 
 クライアント トークンをDANIELLE_DEV_TOKEN環境変数値としてエクスポートし、後続の Vault 要求の認証に使用
 ```
-export DANIELLE_DEV_TOKEN="hvs.CAESICug7qsv905D5Pay0hVRYHpI2ehuVW1_wWIF1Jn0HuzXGh4KHGh2cy4wZkNOUXg0RmsycGdQUzF5TGNvR1BzUWI"
+export DANIELLE_DEV_TOKEN="hvs.*******************************************************************************************"
 ```
 
 
