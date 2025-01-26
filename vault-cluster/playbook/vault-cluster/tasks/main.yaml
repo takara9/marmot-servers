@@ -1,0 +1,92 @@
+# etcd の設定
+#
+- name: "環境表示"
+  debug: msg="{{ ansible_facts.hostname }}"
+
+
+- name: "etcd 証明書ファイルの保存用ディレクトリの作成"
+  file:
+    path: /etc/vault
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: "etcd データディレクトリの作成"
+  file:
+    path: /var/vault-data
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: "自己署名証明書の配置"
+  template:
+    src: vault-cert.pem
+    dest: /etc/vault
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: "自己署名証明書 鍵の配置"
+  template:
+    src: vault-key.pem
+    dest: /etc/vault
+    owner: root
+    group: root 
+    mode: '0600'
+
+- name: "Vault コンフィグファイルの配置"
+  template:
+    src: config.hcl
+    dest: /etc/vault
+    owner: root
+    group: root 
+    mode: '0600'
+
+- name: etcdのプレビルドバイナリをダウンロード
+  get_url:
+    url: "https://releases.hashicorp.com/vault/1.18.3/vault_1.18.3_linux_amd64.zip"
+    dest: /tmp
+    mode: 0440
+
+- name: tar ファイルを展開
+  unarchive:
+    src:  "/tmp/vault_1.18.3_linux_amd64.zip"
+    dest: "/tmp"
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+
+- name: インストール Vault
+  copy:
+    src: "/tmp/vault"
+    dest: "/usr/local/bin/vault"
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: true
+
+- name: "クリーンナップ"
+  file:
+    path: "/tmp/vault_1.18.3_linux_amd64.zip"
+    state: absent
+- file:
+    path: "/tmp/vault"
+    state: absent
+
+- name: systemd Unitファイルの配置
+  template:
+    src: "vault.service.j2"
+    dest: "/lib/systemd/system/vault.service"
+    owner: root
+    group: root 
+    mode: '0644'
+
+#- name: Start etcd
+#  systemd:
+#    name: etcd
+#    state: started
+#    daemon_reload: yes
+#    enabled: yes

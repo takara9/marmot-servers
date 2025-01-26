@@ -1,0 +1,19 @@
+# /lib/systemd/system/vault.service
+[Unit]
+Description=vault - Manage Secrets & Protect Sensitive Data
+Documentation=https://developer.hashicorp.com/vault
+After=network.target
+Wants=network-online.target
+
+[Service]
+#Environment=VAULT_NAME=%H
+Type=notify
+User=root
+PermissionsStartOnly=true
+ExecStart=/usr/local/bin/vault \
+  --config /etc/vault/config.hcl
+Restart=on-abnormal
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

@@ -12,8 +12,11 @@ vm_spec:
     memory: 8192
     private_ip: "172.16.31.11"
     storage:
-    - name: vault-store1
-      size: 5
+    - name: etcd-store
+      size: 2
+      vg:   vg2
+    - name: vault-store
+      size: 2
       vg:   vg2
     playbook: install.yaml
     comment:  "node #1"
@@ -23,8 +26,11 @@ vm_spec:
     memory: 8192
     private_ip: "172.16.31.12"
     storage:
-    - name: vault-store1
-      size: 5
+    - name: etcd-store
+      size: 2
+      vg:   vg2
+    - name: vault-store
+      size: 2
       vg:   vg2
     playbook: install.yaml
     comment:  "node #2"
@@ -34,8 +40,11 @@ vm_spec:
     memory: 8192
     private_ip: "172.16.31.13"
     storage:
-    - name: vault-store1
-      size: 5
+    - name: etcd-store
+      size: 2
+      vg:   vg2
+    - name: vault-store
+      size: 2
       vg:   vg2
     playbook: install.yaml
     comment:  "node #3"

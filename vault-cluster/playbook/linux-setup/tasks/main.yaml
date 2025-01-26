@@ -128,11 +128,31 @@
     group: root
     mode: '0644'
 
+- name: Etcd storage
+  filesystem:
+    fstype: ext4
+    dev: /dev/vdb
+
+- name: Mount etcd data volume
+  mount:
+    path: /var/etcd-data
+    src:  /dev/vdb
+    fstype: ext4
+    state: mounted
+  when: ansible_facts.devices.vdb is defined
 
 - name: Vault storage
   filesystem:
     fstype: ext4
-    dev: /dev/vdb
+    dev: /dev/vdc
+
+- name: Mount vault data volume
+  mount:
+    path: /var/vault-data
+    src:  /dev/vdc
+    fstype: ext4
+    state: mounted
+  when: ansible_facts.devices.vdc is defined
 
 - name: NFS MOUNT
   include_tasks: nfs-mount.yaml

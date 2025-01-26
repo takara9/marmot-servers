@@ -5,3 +5,4 @@
   roles:
     - linux-setup
     - etcd-cluster
+    - vault-cluster
