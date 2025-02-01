@@ -10,8 +10,7 @@ Wants=network-online.target
 Type=notify
 User=root
 PermissionsStartOnly=true
-ExecStart=/usr/local/bin/vault \
-  --config /etc/vault/config.hcl
+ExecStart=/usr/local/bin/vault server -config /etc/vault/config.hcl
 Restart=on-abnormal
 LimitNOFILE=65536
 
