@@ -179,7 +179,6 @@ token_meta_username    user1
 ## KVへ書き込み、読み取り
 
 
-
 ```
 $ vault kv put /user-secrets/creds api-key='パスワードとかトークンなど秘密をセット'
 ```
