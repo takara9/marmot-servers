@@ -4,7 +4,7 @@
   debug: msg="{{ ansible_facts.hostname }}"
 
 
-- name: "etcd 証明書ファイルの保存用ディレクトリの作成"
+- name: "vault 証明書ファイルの保存用ディレクトリの作成"
   file:
     path: /etc/vault
     state: directory
@@ -12,7 +12,7 @@
     group: root
     mode: '0755'
 
-- name: "etcd データディレクトリの作成"
+- name: "vault データディレクトリの作成"
   file:
     path: /var/vault-data
     state: directory
@@ -20,17 +20,28 @@
     group: root
     mode: '0755'
 
-- name: "自己署名証明書の配置"
+- name: "認証局証明書の配置"
   template:
-    src: vault-cert.pem
+    src: ca.pem
     dest: /etc/vault
     owner: root
     group: root
     mode: '0644'
 
-- name: "自己署名証明書 鍵の配置"
+
+- name: "証明書の配置"
   template:
-    src: vault-key.pem
+    #src: "vault-{{ ansible_facts.hostname }}.pem"
+    src: "vault-node1.pem"
+    dest: /etc/vault
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: "鍵の配置"
+  template:
+    #src: "vault-{{ ansible_facts.hostname }}-key.pem"
+    src: "vault-node1-key.pem"
     dest: /etc/vault
     owner: root
     group: root 
@@ -44,7 +55,7 @@
     group: root 
     mode: '0600'
 
-- name: etcdのプレビルドバイナリをダウンロード
+- name: Vaultプレビルドバイナリをダウンロード
   get_url:
     url: "https://releases.hashicorp.com/vault/1.18.3/vault_1.18.3_linux_amd64.zip"
     dest: /tmp
@@ -84,9 +95,9 @@
     group: root 
     mode: '0644'
 
-#- name: Start etcd
-#  systemd:
-#    name: etcd
-#    state: started
-#    daemon_reload: yes
-#    enabled: yes
+- name: Start vault
+  systemd:
+    name: vault
+    state: started
+    daemon_reload: yes
+    enabled: yes

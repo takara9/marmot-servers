@@ -42,10 +42,10 @@ vault operator init -format=json -key-shares 1 -key-threshold 1
 ```
 {
   "unseal_keys_b64": [
-    "gFnFCEcKLKgnkw9NfBFEdivnmzWmqhzm/tfpEZZNmKg="
+    "uueT6wsvmtqDDkZCPpLS2d9UYEadduhKIbaYuakkSak="
   ],
   "unseal_keys_hex": [
-    "8059c508470a2ca827930f4d7c1144762be79b35a6aa1ce6fed7e911964d98a8"
+    "bae793eb0b2f9ada830e46423e92d2d9df5460469d76e84a21b698b9a92449a9"
   ],
   "unseal_shares": 1,
   "unseal_threshold": 1,
@@ -53,20 +53,20 @@ vault operator init -format=json -key-shares 1 -key-threshold 1
   "recovery_keys_hex": [],
   "recovery_keys_shares": 0,
   "recovery_keys_threshold": 0,
-  "root_token": "hvs.fhtSo8NzUFNTMcuushXQnFG4"
+  "root_token": "hvs.ylxucg0WpIJj4r9vqFqwdsga"
 }
 ```
 
 ## 封印を解除
 封印を解除なければ、ログインなどの操作が出来ない。そのため、初期化時の "unseal_keys_b64" を使って解除する。
 ```
-vault operator unseal gFnFCEcKLKgnkw9NfBFEdivnmzWmqhzm/tfpEZZNmKg=
+vault operator unseal ptgJ6oK6mIJIekCnVDdFlobM4JqRI0mux11tjRhpdjU=
 ```
 
 ## ルートでログイン
 ユーザー登録、ポリシー設定、認証方法などの設定のため、rootでログインする。
 ```
-vault login hvs.fhtSo8NzUFNTMcuushXQnFG4
+vault login hvs.0G5YuZbmTNeg1VFziKYTNPSj
 ```
 
 ## パスワードによる認証を有効化
@@ -218,3 +218,4 @@ Key        Value
 ---        -----
 api-key    パスワードとかトークンなど秘密をセット
 ```
+
