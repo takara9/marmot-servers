@@ -46,7 +46,7 @@ lb_vip_range           = 20
 
 cluster_admin            = ubuntu
 
-public_ip_dns            = "172.16.0.8"
+public_ip_dns            = "172.16.0.9"
 
 #kubernetes_version       = "1.29.9-1.1"
 kubernetes_version       = "1.31.2-1.1"
