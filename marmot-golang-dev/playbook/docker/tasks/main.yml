@@ -16,9 +16,12 @@
     update_cache: yes
   vars:
     packages:
-    - docker-ce{{ docker_version_ubuntu }}
-    - docker-compose
-
+    - apt-transport-https
+    - ca-certificates
+    - software-properties-common
+    - docker-ce={{ docker_version }}
+    - docker-compose={{ docker_compose_version }}
+    
 - name: docker config
   template:
     src: docker.service
@@ -31,7 +34,7 @@
   user:
     name: "{{ cluster_admin }}"
     comment: docker exection user
-    group: docker
+    groups: docker
 
 - name: Set sysctl 
   sysctl:
@@ -56,9 +59,8 @@
     daemon_reload: yes
     enabled: yes
 
-#- name: Download docker-compose
+#- name: install docker-compose
 #  get_url:
-#    url:  "https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-Linux-x86_64"
+#    url: "https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-Linux-x86_64"
 #    dest: /usr/local/bin/docker-compose
-#    mode: 0755
-
+#    mode: 0755    

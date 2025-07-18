@@ -1,0 +1,109 @@
+#
+# Ubuntu の 自動アップデートを禁止する
+#
+- name: Disable auto update packages
+  replace:
+    path: /etc/apt/apt.conf.d/20auto-upgrades
+    regexp: 'APT::Periodic::Update-Package-Lists "1";'
+    replace: 'APT::Periodic::Update-Package-Lists "0";'
+    backup: no
+
+#
+# リスタート　systemctl restart systemd-resolved
+#
+- systemd:
+    name: systemd-resolved
+    state: stopped
+    daemon_reload: no
+    enabled: no
+
+#
+# /etc/resolv.conf を変更
+#
+- name: copy resolv.conf
+  template:
+    src: resolv.conf.j2
+    dest: /etc/resolv.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+#
+# スワップ領域の無効化
+#
+- name: Disable SWAP since kubernetes can't work with swap enabled (1/2)
+  command: swapoff -a
+
+- name: Disable SWAP in fstab since kubernetes can't work with swap enabled (2/2)
+  replace:
+    path: /etc/fstab
+    regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+    replace: '# \1'
+
+- name: Ansible delete swap file glob
+  find:
+    paths: /
+    patterns: "swap.img"
+  register: files_to_delete
+
+- name: Ansible remove swap file glob
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  with_items: "{{ files_to_delete.files }}"
+
+#
+# カーネル設定変更
+#
+- name: Configure Kernel parameter
+  include_tasks: kernel-param.yaml
+
+- name: Ensure /etc/hosts
+  template:
+    src: hosts.j2
+    dest: /etc/hosts
+    owner: root
+    group: root
+    mode: '0644'
+
+#
+# 管理ユーザーをrootグループへ追加
+#
+- name: admin  user add root group
+  user:
+    name: "{{ cluster_admin }}"
+    groups: root
+    append: yes
+
+- name: Ensure group 'admin' exists
+  group:
+    name:  "{{ cluster_admin }}"
+    state: present
+
+- name: Add the user 'admin' with a bash shell,
+  user:
+    name:  "{{ cluster_admin }}"
+    shell: /bin/bash
+    group: "{{ cluster_admin }}"
+
+- name: add sudoers
+  template:
+    src:  sudor.j2
+    dest: "/etc/sudoers.d/{{ cluster_admin }}"
+    owner: root
+    group: root
+    mode: '0440'
+
+#
+# HOSTS設定
+#
+- name: Ensure /etc/hosts
+  template:
+    src: hosts.j2
+    dest: /etc/hosts
+    owner: root
+    group: root
+    mode: '0644'
+
+
+- debug: msg="{{ ansible_facts.virtualization_type }}"

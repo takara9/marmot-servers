@@ -3,8 +3,8 @@
   become: true
   gather_facts: yes
   vars:
-    ca_server: 172.16.0.9
-    public_ip_dns: 172.16.0.9
+    ca_server: 172.16.1.9
+    public_ip_dns: 172.16.1.9
     cluster_admin: ubuntu
     sw_container_fs: False
     prevent_download: True
@@ -12,4 +12,7 @@
   tasks:
     - debug: msg="{{ ansible_facts.hostname }}"
   roles:
-    - linux-setup-minimum
+    - linux-setup
+    - docker
+    - golang
+  

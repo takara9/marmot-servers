@@ -2,14 +2,14 @@
 # server for code development
 #
 domain: labo.local
-os_variant:  ubuntu20.04
+os_variant:  ubuntu22.04
 
 cluster_name: dev
 vm_spec:
   - name: "dev-server"
     cpu: 2
-    memory: 4096
-    private_ip: "172.16.99.11"
+    memory: 8196
+    private_ip: "172.16.0.90"
     storage:
     - name: /dev/vdb
       size: 100

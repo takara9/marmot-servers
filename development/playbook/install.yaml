@@ -3,8 +3,8 @@
   become: true
   gather_facts: yes
   vars:
-    ca_server: 172.16.0.8
-    public_ip_dns: 172.16.0.8
+    ca_server: 172.16.0.9
+    public_ip_dns: 172.16.0.9
     cluster_admin: ubuntu
     sw_container_fs: False
     prevent_download: True
