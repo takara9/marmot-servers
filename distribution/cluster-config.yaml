@@ -1,0 +1,14 @@
+#
+# 最小構成のServer
+#
+domain: labo.local
+os_variant: ubuntu22.04
+
+cluster_name: infra
+vm_spec:
+  - name: "registry"
+    cpu: 2
+    memory: 4096
+    private_ip: "172.16.0.10"
+    playbook: install.yaml
+    comment: "Develop node #1"

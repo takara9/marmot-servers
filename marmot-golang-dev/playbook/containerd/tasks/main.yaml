@@ -1,0 +1,40 @@
+#
+# Containerd のダウンロードとインストール
+#
+- debug: msg="{{ ansible_facts.hostname }}"
+
+
+- name: Install Ubuntu package
+  apt:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+  register: apt_res
+  retries: 10
+  delay: 60
+  until: apt_res is success
+  vars:
+    packages:
+    - rootlesskit
+    - iptables
+
+#
+# これらのダウンロードはbootnodeで実施される。
+#
+- include_tasks: dl_cni_plugin.yaml
+- include_tasks: dl_containerd.yaml
+#- include_tasks: dl_cri_containerd.yaml
+- include_tasks: dl_crictl.yaml
+- include_tasks: dl_runc.yaml
+- include_tasks: dl_nerdctl.yaml
+- include_tasks: dl_buildkit.yaml
+
+
+#- name: mount cgroup
+#  shell: |
+#    mkdir /sys/fs/cgroup/systemd
+#    mount -t cgroup -o none,name=systemd cgroup /sys/fs/cgroup/systemd
+
+#
+# インストールとセットアップ
+- include_tasks: install_containerd.yaml

@@ -1,10 +1,23 @@
-- name: OS環境設定
-  hosts: all
+- name: 環境設定
+  hosts: dog1
   gather_facts: yes
   become: yes
   roles:
-    - vdisks  
-    - base_linux
-    - docker
+    - vdisks
+    - setup-linux
+    #- docker
+    - containerd
     - go-lang
-  
+    #- registry
+
+- name: 環境設定
+  hosts: dog2
+  gather_facts: yes
+  become: yes
+  roles:
+    - vdisks
+    - setup-linux
+    - docker
+    #- containerd
+    - go-lang
+    - registry

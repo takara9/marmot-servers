@@ -1,0 +1,18 @@
+#
+# CNIプラグインのダウンロード
+#
+- name: Check existing downloaded cni-plugins-linux-amd64-v{{ cni_plugins }}.tgz
+  stat:
+    path: "{{ download_dir }}/cni-plugins-linux-amd64-v{{ cni_plugins }}.tgz"
+  register: regi_cni
+
+- name: Downloading cni-plugins-linux-amd64-v{{ cni_plugins }}.tgz
+  get_url:
+    url: "https://github.com/containernetworking/plugins/releases/download/v{{ cni_plugins }}/cni-plugins-linux-amd64-v{{ cni_plugins }}.tgz"
+    dest: "{{ download_dir }}"
+    mode: '0644'
+  when:
+    - regi_cni.stat.exists == False
+
+# https://github.com/containernetworking/plugins/releases/download/v1.7.1/cni-plugins-linux-amd64-v1.7.1.tgz
+# https://github.com/containernetworking/plugins/releases/download/v1.7.1/cni-plugins-linux-amd64-v1.7.1.tgz

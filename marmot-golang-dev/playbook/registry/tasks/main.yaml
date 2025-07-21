@@ -1,0 +1,60 @@
+#
+# Containerd のダウンロードとインストール
+#
+- debug: msg="{{ ansible_facts.hostname }}"
+
+- include_tasks: dl_registry.yaml
+
+# インストールとセットアップ
+- name: create the store of container images
+  file:
+    path: /var/lib/registry
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: create config path
+  file:
+    path: /etc/distribution
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- template:
+    src: config.yml.j2
+    dest: /etc/distribution/config.yml
+    owner: root
+    group: root
+    mode: "0644"
+
+- template:
+    src: registry.service
+    dest: /etc/systemd/system/registry.service
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: install containerd 1.3 upper
+  unarchive:
+    src: "{{ download_dir }}/registry_{{ registry_ver }}_linux_amd64.tar.gz"
+    dest: /usr/local/bin
+    remote_src: True
+    owner: root
+    group: root
+    mode: "0755"
+
+- template:
+    src: registry.service
+    dest: /etc/systemd/system
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Start the Worker Services
+  systemd:
+    name: registry
+    state: started
+    daemon_reload: yes
+    enabled: yes

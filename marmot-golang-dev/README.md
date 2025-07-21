@@ -134,3 +134,6 @@ ubuntu@hmc:~/marmot-build$ cat -n inventory
     15  k8s_version     = "1.27"
     16  k8s_release     = "release-{{ k8s_version }}"
 ~~~
+
+
+container-images/docker/registry/v2/repositories/hello-world/_layers/sha256

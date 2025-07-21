@@ -2,7 +2,7 @@
 # 最小構成のServer
 #
 domain: labo.local
-os_variant:  ubuntu22.04
+os_variant: ubuntu22.04
 
 cluster_name: dev
 vm_spec:
@@ -11,11 +11,24 @@ vm_spec:
     memory: 8192
     private_ip: "172.16.31.20"
     storage:
-    - name: data
-      size: 100
-      vg:   vg2
-    - name: docker
-      size: 100
-      vg:   vg2
+      - name: data
+        size: 100
+        vg: vg2
+      - name: docker
+        size: 100
+        vg: vg2
     playbook: install.yaml
     comment: "Develop node #1"
+  - name: "dog2"
+    cpu: 2
+    memory: 8192
+    private_ip: "172.16.31.21"
+    storage:
+      - name: data
+        size: 100
+        vg: vg2
+      - name: docker
+        size: 100
+        vg: vg2
+    playbook: install.yaml
+    comment: "Develop node #2"

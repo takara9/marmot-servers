@@ -1,0 +1,14 @@
+[Unit]
+Description=Container image registry
+Documentation=https://distribution.github.io/distribution/
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/registry serve /etc/distribution/config.yml
+Restart=always
+RestartSec=5
+Delegate=yes
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

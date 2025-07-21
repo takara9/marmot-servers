@@ -1,0 +1,16 @@
+#
+# CNCF registry
+#   
+#
+- name: Check existing the downloaded registry
+  stat:
+    path: "{{ download_dir }}/registry_{{ registry_ver }}_linux_amd64.tar.gz"
+  register: regi_registry
+
+- name: Downloading registry_{{ registry_ver }}_linux_amd64.tar.gz
+  get_url:
+    url: "https://github.com/distribution/distribution/releases/download/v{{ registry_ver }}/registry_{{ registry_ver }}_linux_amd64.tar.gz"
+    dest: "{{ download_dir }}"
+    mode: '0644'
+  when:
+    - regi_registry.stat.exists == False

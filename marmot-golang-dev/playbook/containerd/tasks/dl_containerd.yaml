@@ -1,0 +1,20 @@
+#
+# CONTAINERD
+#
+
+#
+# CONTAINERD 1.3.4以上
+#
+
+- name: Downloading containerd 1
+  stat:
+    path: "{{ download_dir }}/containerd-{{ containerd_ver }}-linux-amd64.tar.gz"
+  register: regi_containerd
+
+- name: Download tar.gz file
+  get_url:
+    url: "https://github.com/containerd/containerd/releases/download/v{{ containerd_ver }}/containerd-{{ containerd_ver }}-linux-amd64.tar.gz"
+    dest: "{{ download_dir }}"
+    mode: '0644'
+  when:
+    - regi_containerd.stat.exists == False

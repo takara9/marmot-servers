@@ -1,0 +1,7 @@
+- name: 環境設定
+  hosts: all
+  gather_facts: yes
+  become: yes
+  roles:
+    - setup-linux
+    - registry
