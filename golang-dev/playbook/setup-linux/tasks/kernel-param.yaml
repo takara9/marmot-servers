@@ -1,0 +1,87 @@
+#
+# カーネル設定変更
+#
+- name: Add the br_netfilter module
+  modprobe:
+    name: br_netfilter
+    state: present
+
+- modprobe:
+    name:  overlay
+    state: present
+
+- sysctl:
+    name: net.bridge.bridge-nf-call-iptables
+    value: "1"
+    sysctl_set: yes
+    sysctl_file: /etc/sysctl.conf
+    state: present
+    reload: yes
+
+- sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    sysctl_set: yes
+    sysctl_file: /etc/sysctl.conf
+    state: present
+    reload: yes
+
+- sysctl:
+    name: vm.max_map_count
+    value: "262144"
+    sysctl_set: yes
+    sysctl_file: /etc/sysctl.conf
+    state: present
+    reload: yes
+
+## IPv6の無効化
+- sysctl:
+    name: net.ipv6.conf.all.disable_ipv6
+    value: "1"
+    sysctl_set: yes
+    sysctl_file: /etc/sysctl.conf
+    state: present
+    reload: yes
+
+- sysctl:
+    name: net.ipv6.conf.default.disable_ipv6
+    value: "1"
+    sysctl_set: yes
+    sysctl_file: /etc/sysctl.conf
+    state: present
+    reload: yes
+
+- sysctl:
+    name: net.ipv6.conf.lo.disable_ipv6
+    value: "1"
+    sysctl_set: yes
+    sysctl_file: /etc/sysctl.conf
+    state: present
+    reload: yes
+
+
+#
+# スワップ領域の無効化
+#
+- name: Disable SWAP since kubernetes can't work with swap enabled (1/2)
+  command: swapoff -a
+
+- name: Disable SWAP in fstab since kubernetes can't work with swap enabled (2/2)
+  replace:
+    path: /etc/fstab
+    regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+    replace: '# \1'
+
+- name: Ansible delete swap file glob
+  find:
+    paths: /
+    patterns: "swap.img"
+  register: files_to_delete
+
+- name: Ansible remove swap file glob
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  with_items: "{{ files_to_delete.files }}"
+
+

@@ -1,0 +1,18 @@
+#
+# buildkit
+#   
+#
+- name: Check existing the downloaded buildkit
+  stat:
+    path: "{{ download_dir }}/buildkit-v{{ buildkit_ver }}.linux-amd64.tar.gz"
+  register: regi_buildkit
+
+
+
+- name: Downloading buildkit-v{{ buildkit_ver }}.linux-amd64.tar.gz
+  get_url:
+    url: "https://github.com/moby/buildkit/releases/download/v{{ buildkit_ver }}/buildkit-v{{ buildkit_ver }}.linux-amd64.tar.gz"
+    dest: "{{ download_dir }}"
+    mode: '0644'
+  when:
+    - regi_buildkit.stat.exists == False
