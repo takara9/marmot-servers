@@ -1,0 +1,15 @@
+- name: self-hosted runner のセットアップ
+  hosts: runners
+  gather_facts: yes
+  become: yes
+  roles:
+    - user-add
+    - dns-setting
+    - expand-var
+    - install-package
+    - volumegroup
+    - hostname
+    - docker
+    - go-lang
+    - node-exporter
+    - alloy

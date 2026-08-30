@@ -1,0 +1,1 @@
+注意：このリポジトリはアーカイブとして読み取り専用に変更します。今後、https://github.com/takara9/marmot-manifests に移行します。

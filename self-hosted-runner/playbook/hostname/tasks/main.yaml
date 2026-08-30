@@ -1,0 +1,6 @@
+- name: /etc/hostにホスト名を追加
+  lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.0\.1\s+localhost\s+'
+    insertafter: '^127\.0\.0\.1\s+localhost\s+'
+    line: "127.0.0.1   localhost {{ ansible_facts['nodename'] }}"

@@ -1,0 +1,82 @@
+- name: Update apt-get repo and cache
+  apt:
+    update_cache: yes
+    force_apt_get: yes
+    cache_valid_time: 3600
+
+- name: Alloyに必要なパッケージをインストール
+  apt:
+    name:
+      - gpg
+      - wget
+    state: present
+
+- name: Grafana APT keyring ディレクトリを作成
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Grafana GPGキーをダウンロード
+  get_url:
+    url: https://apt.grafana.com/gpg-full.key
+    dest: /etc/apt/keyrings/grafana.asc
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Grafana APT リポジトリを追加
+  copy:
+    dest: /etc/apt/sources.list.d/grafana.list
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main
+
+- name: Grafana APT repo を更新
+  apt:
+    update_cache: yes
+    force_apt_get: yes
+
+- name: Grafana Alloy をインストール
+  apt:
+    name: alloy
+    state: present
+
+- name: Alloy 設定ディレクトリを作成
+  file:
+    path: /etc/alloy
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Alloy 設定ファイルを配置
+  template:
+    src: config.alloy.j2
+    dest: /etc/alloy/config.alloy
+    owner: root
+    group: root
+    mode: '0644'
+  register: alloy_config
+
+- name: Alloy サービスを有効化して起動
+  systemd:
+    name: alloy
+    enabled: yes
+    state: started
+    daemon_reload: yes
+
+- name: Alloy 設定変更時にサービスを再起動
+  systemd:
+    name: alloy
+    state: restarted
+  when: alloy_config.changed
+
+- name: Alloy バージョンを確認
+  command: alloy --version
+  register: alloy_version_result
+  changed_when: false

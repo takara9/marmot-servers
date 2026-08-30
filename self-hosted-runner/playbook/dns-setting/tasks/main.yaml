@@ -1,0 +1,22 @@
+#
+# DNSの設定を変更
+#
+- name: systemd-resolved.serviceの無効化
+  systemd:
+    name: systemd-resolved
+    state: stopped
+    enabled: no
+    daemon_reload: yes
+
+- name: シンボリックリンクの削除
+  file:
+    path: /etc/resolv.conf
+    state: absent
+
+- name: ローカルDNSに設定を変更
+  template:
+    src: resolv.conf.j2
+    dest: /etc/resolv.conf
+    owner: root
+    group: root
+    mode: '0644'

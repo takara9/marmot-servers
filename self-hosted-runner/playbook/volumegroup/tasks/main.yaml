@@ -1,0 +1,9 @@
+- name: ボリュームグループの作成 vg1
+  community.general.lvg:
+    vg: vg1
+    pvs: /dev/vdc
+
+- name: ボリュームグループの作成 vg2
+  community.general.lvg:
+    vg: vg2
+    pvs: /dev/vdd

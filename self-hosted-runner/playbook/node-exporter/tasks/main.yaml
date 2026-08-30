@@ -1,0 +1,91 @@
+- name: Update apt-get repo and cache
+  apt:
+    update_cache: yes
+    force_apt_get: yes
+    cache_valid_time: 3600
+
+- name: node_exporter展開用ディレクトリを作成
+  file:
+    path: /home/ubuntu/download
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: '0775'
+
+- name: node_exporter実行ユーザーを作成
+  user:
+    name: node_exporter
+    system: yes
+    shell: /usr/sbin/nologin
+    create_home: no
+
+- name: node_exporterアーカイブをダウンロード
+  get_url:
+    url: https://github.com/prometheus/node_exporter/releases/download/v1.10.2/node_exporter-1.10.2.linux-amd64.tar.gz
+    dest: /home/ubuntu/download/node_exporter-1.10.2.linux-amd64.tar.gz
+    mode: '0644'
+
+- name: 現在のnode_exporterバージョンを確認
+  command: /usr/local/bin/node_exporter --version
+  register: node_exporter_version_check
+  changed_when: false
+  failed_when: false
+
+- name: 古いnode_exporter展開ディレクトリを削除
+  file:
+    path: /home/ubuntu/download/node_exporter-1.10.2.linux-amd64
+    state: absent
+  when: node_exporter_version_check.rc != 0 or 'node_exporter, version 1.10.2' not in node_exporter_version_check.stdout
+
+- name: node_exporterアーカイブを展開
+  unarchive:
+    src: /home/ubuntu/download/node_exporter-1.10.2.linux-amd64.tar.gz
+    dest: /home/ubuntu/download
+    remote_src: true
+    owner: ubuntu
+    group: ubuntu
+  when: node_exporter_version_check.rc != 0 or 'node_exporter, version 1.10.2' not in node_exporter_version_check.stdout
+
+- name: node_exporterバイナリを配置
+  copy:
+    src: /home/ubuntu/download/node_exporter-1.10.2.linux-amd64/node_exporter
+    dest: /usr/local/bin/node_exporter
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: true
+  when: node_exporter_version_check.rc != 0 or 'node_exporter, version 1.10.2' not in node_exporter_version_check.stdout
+
+- name: systemdサービスファイルを配置
+  copy:
+    dest: /etc/systemd/system/node_exporter.service
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Prometheus Node Exporter
+      Wants=network-online.target
+      After=network-online.target
+
+      [Service]
+      User=node_exporter
+      Group=node_exporter
+      Type=simple
+      ExecStart=/usr/local/bin/node_exporter
+      Restart=on-failure
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: node_exporterサービスを有効化して起動
+  systemd:
+    name: node_exporter
+    enabled: yes
+    state: started
+    daemon_reload: yes
+
+- name: node_exporterのバージョンを確認
+  command: /usr/local/bin/node_exporter --version
+  register: node_exporter_version_result
+  changed_when: false

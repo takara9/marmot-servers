@@ -1,0 +1,41 @@
+- name: パッケージのインストール
+  apt: update_cache=yes force_apt_get=yes cache_valid_time=3600
+
+- name: Install Ubuntu package
+  apt:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+  register: apt_res
+  retries: 10
+  delay: 60
+  until: apt_res is success
+  vars:
+    packages:
+    - jq
+    - nfs-common
+    - nfs-client
+    - emacs-nox
+    - ca-certificates
+    - curl
+    - gnupg
+    - lsb-release
+    - git
+    - gcc
+    - make
+    - kpartx
+    - virt-top
+    - virt-manager
+    - libvirt-dev
+    - libvirt-clients
+    - libvirt-daemon
+    - qemu-system-x86
+    - openvswitch-switch
+    - openvswitch-common
+    - openvswitch-doc
+    - libguestfs-tools
+    - libvirt-daemon-driver-lxc
+    - lxcfs
+    - bridge-utils
+    - genisoimage
+  
