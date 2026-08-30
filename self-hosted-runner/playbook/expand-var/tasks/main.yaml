@@ -1,0 +1,40 @@
+- name: ext4 ファイルシステムを作成
+  filesystem:
+    fstype: ext4
+    dev: /dev/vdb
+
+- name: /build ディレクトリを作成
+  file:
+    path: /build
+    owner: root
+    group: root
+    mode: '2775'
+    state: directory
+
+- name: /dev/vdb を /build にマウント
+  mount: 
+    path: /build
+    src: /dev/vdb
+    fstype: ext4
+    state: mounted
+
+- name: /var を利用するデーモンの一時停止
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+  loop:
+    - systemd-journald
+
+- name: /var の内容を /build に移動
+  shell: |
+    tar -C / -cf - var | tar -C /build -xf -
+    mv /build/var /build/var.old
+    ln -s /var /build/var
+    systemctl daemon-reload
+
+- name: /var を利用するデーモンの再起動
+  systemd:
+    name: "{{ item }}"
+    state: started
+  loop:
+    - systemd-journald

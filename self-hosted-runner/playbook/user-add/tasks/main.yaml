@@ -1,0 +1,29 @@
+- name: ubuntu グループの作成
+  group:
+    name: ubuntu
+    state: present
+
+- name: ubuntu ユーザーの追加
+  user:
+    name: ubuntu
+    groups: ubuntu
+    append: yes
+
+- name: ubuntu ユーザーに bash シェルを設定
+  user:
+    name:  "ubuntu"
+    shell: /bin/bash
+    group: "ubuntu"
+    home: /home/ubuntu
+    create_home: yes
+
+- name: sudoers の設定
+  template:
+    src:  sudoers.j2
+    dest: "/etc/sudoers.d/ubuntu"
+    owner: root
+    group: root
+    mode: '0440'
+
+- name: ssh 鍵のリモートコピー
+  shell: "cp -fr /root/.ssh /home/ubuntu/.ssh && chown -R ubuntu:ubuntu /home/ubuntu/.ssh"

@@ -1,0 +1,66 @@
+- name: Update apt-get repo and cache
+  apt: update_cache=yes force_apt_get=yes cache_valid_time=3600
+
+- name: Go言語の展開に必要なパッケージをインストール
+  apt:
+    name:
+      - tar
+      - gzip
+      - ca-certificates
+    state: present
+
+- name: Go言語ダウンロード用ディレクトリを作成
+  file:
+    path: /home/ubuntu/download
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: '0775'
+
+- name: Go言語アーカイブをダウンロード
+  get_url:
+    url: https://go.dev/dl/go1.26.2.linux-amd64.tar.gz
+    dest: /home/ubuntu/download/go1.26.2.linux-amd64.tar.gz
+    checksum: sha256:990e6b4bbba816dc3ee129eaeaf4b42f17c2800b88a2166c265ac1a200262282
+    mode: '0644'
+
+- name: 現在のGo言語バージョンを確認
+  command: /usr/local/go/bin/go version
+  register: go_version_check
+  changed_when: false
+  failed_when: false
+
+- name: 既存のGo言語を削除
+  file:
+    path: /usr/local/go
+    state: absent
+  when: go_version_check.rc != 0 or 'go1.26.2' not in go_version_check.stdout
+
+- name: Go言語を/usr/localに展開
+  unarchive:
+    src: /home/ubuntu/download/go1.26.2.linux-amd64.tar.gz
+    dest: /usr/local
+    remote_src: true
+    owner: root
+    group: root
+  when: go_version_check.rc != 0 or 'go1.26.2' not in go_version_check.stdout
+
+- name: Go言語のPATHとGOPATHを設定
+  copy:
+    dest: /etc/profile.d/go-lang.sh
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      export PATH=$PATH:/usr/local/go/bin
+      export GOPATH=/home/ubuntu
+
+- name: インストール後のGo言語バージョンを確認
+  command: /usr/local/go/bin/go version
+  register: go_version_result
+  changed_when: false
+
+
+
+
+
